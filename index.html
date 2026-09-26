@@ -1,0 +1,1253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Project Meatloaf</title>
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍖</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f4f4f1; --surface:#ffffff; --ink:#161616; --muted:#5f5f5a; --rule:#dadad4; --line:#b8b8b1;
+  --c-weather:#fccc0a; --c-outfit:#b933ad; --c-cal:#0039a6; --c-up:#ee352e; --c-todo:#00933c; --c-games:#ff6319;
+  --good:#00933c; --bad:#d8261f; --focus:#0039a6;
+  --font:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#111111; --surface:#1b1b1b; --ink:#ececE8; --muted:#a3a39d; --rule:#2c2c29; --line:#4b4b46;
+    --c-cal:#3d70d6; --bad:#ff5a52; --good:#2fb866; --focus:#7aa2ff; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#111111; --surface:#1b1b1b; --ink:#ececE8; --muted:#a3a39d; --rule:#2c2c29; --line:#4b4b46;
+  --c-cal:#3d70d6; --bad:#ff5a52; --good:#2fb866; --focus:#7aa2ff; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{background:var(--paper);scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+img{max-width:100%}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+
+/* Station-sign header */
+.band{background:#000;color:#fff;padding:12px 18px 18px}
+.band-inner{max-width:600px;margin:0 auto}
+.band-inner::before{content:"";display:block;height:2px;background:#fff;margin-bottom:14px}
+.band-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.band h1{margin:0;font-size:28px;line-height:1.05;font-weight:750;font-stretch:112%;letter-spacing:-.01em}
+.band p{margin:4px 0 0;font-size:15px;color:#cfcfcf}
+.refresh{background:transparent;border:1.5px solid #fff;color:#fff;border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap}
+.refresh[aria-busy="true"]{opacity:.6}
+
+main{max-width:600px;margin:0 auto;padding:4px 16px 48px}
+
+/* The line: one continuous route linking every section */
+.strip{position:relative}
+.strip::before{content:"";position:absolute;left:15px;top:30px;bottom:60px;width:4px;border-radius:2px;background:var(--line)}
+.stop{position:relative;padding:20px 0 24px 50px;border-bottom:1px solid var(--rule)}
+.stop:last-child{border-bottom:0}
+.bullet{position:absolute;left:0;top:17px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  background:var(--c);color:#fff;font-weight:800;font-size:17px;box-shadow:0 0 0 4px var(--paper)}
+.bullet.dark{color:#111}
+.head{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:34px;margin-bottom:10px;flex-wrap:wrap}
+.head h2{margin:0;font-size:22px;line-height:1.1;font-weight:750;letter-spacing:-.01em}
+.aside{font-size:14px;color:var(--muted)}
+
+.muted{color:var(--muted)}
+.small{font-size:14px}
+p{margin:0 0 8px}
+.note{font-size:14px;color:var(--muted);margin:10px 0 0}
+.err{font-size:14px;color:var(--bad);margin:0 0 10px}
+
+/* Controls */
+.btn{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--ink);background:transparent;border-radius:999px;
+  padding:8px 14px;font-weight:600;font-size:14px;cursor:pointer;line-height:1.2}
+.btn.solid{background:var(--ink);color:var(--paper)}
+.btn.sm{padding:6px 11px;font-size:13px}
+.linkbtn{background:none;border:0;padding:4px 0;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:14px;cursor:pointer}
+.chip{background:var(--surface);border:1.5px solid var(--rule);border-radius:999px;padding:5px 12px;font-size:14px;font-weight:600;cursor:pointer}
+.chip span{font-weight:400;color:var(--muted)}
+.field{padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);min-width:0;font-size:16px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.stack{display:grid;gap:8px}
+form{margin:0}
+
+/* Weather */
+.now{display:flex;align-items:flex-end;gap:14px;margin:2px 0 14px}
+.now .temp{font-size:84px;line-height:.85;font-weight:800;font-stretch:125%;letter-spacing:-.04em}
+.now .cond{font-size:18px;font-weight:600;line-height:1.2;padding-bottom:4px}
+.now .cond span{display:block;font-weight:400;font-size:15px;color:var(--muted)}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin:0}
+.facts div{border-top:2px solid var(--ink);padding-top:6px}
+.facts dt{font-size:13px;color:var(--muted)}
+.facts dd{margin:0;font-size:20px;font-weight:700;line-height:1.2}
+.facts dd small{display:block;font-size:14px;font-weight:400;color:var(--muted)}
+.hours{display:flex;gap:4px;overflow-x:auto;margin:16px 0 4px;padding-bottom:6px;scrollbar-width:thin}
+.hour{flex:0 0 52px;text-align:center;padding:8px 0;border-radius:10px;background:var(--surface);font-size:13px}
+.hour b{display:block;font-size:17px;font-weight:700;margin:2px 0}
+.hour .p{color:var(--c-cal);font-weight:600}
+.hour .p.none{color:transparent}
+.zipform{display:flex;gap:6px;align-items:center}
+.zipform .field{width:92px;padding:6px 10px}
+
+/* Outfit */
+.kicker{font-size:17px;font-weight:700;margin:0 0 10px}
+.fit{margin:0;padding:0;list-style:none;display:grid;gap:0}
+.fit li{display:grid;grid-template-columns:78px 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--rule)}
+.fit li span{color:var(--muted);font-size:14px;padding-top:1px}
+.tips{margin:10px 0 0;padding-left:18px}
+.tips li{margin:3px 0}
+
+/* Calendar */
+.day{margin:0 0 12px}
+.day h3{margin:0 0 4px;font-size:15px;font-weight:700}
+.ev{display:grid;grid-template-columns:92px 1fr;gap:10px;padding:6px 0;border-top:1px solid var(--rule);font-size:15px}
+.ev .t{color:var(--muted);font-variant-numeric:tabular-nums;font-size:14px;padding-top:1px}
+.ev.past{opacity:.45}
+.help{background:var(--surface);border-radius:12px;padding:14px 16px;margin-top:10px;font-size:14px}
+.help ol{margin:8px 0 8px;padding-left:20px}
+.help li{margin:6px 0}
+.help code{font-family:inherit;font-weight:700;background:var(--paper);padding:1px 5px;border-radius:5px;word-break:break-all}
+
+/* Upcoming */
+.up{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;padding:10px 0;border-top:1px solid var(--rule)}
+.up .title{font-weight:650}
+.up .when{font-size:14px;color:var(--muted)}
+.up .when.soon{color:var(--bad);font-weight:600}
+.up .memo{grid-column:1/-1;font-size:14px;color:var(--muted)}
+.addform{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.addform .wide{grid-column:1/-1}
+.addform .field{width:100%}
+.all{margin-top:12px;background:var(--surface);border-radius:12px;padding:6px 14px}
+.all .up:first-child{border-top:0}
+
+/* To-do */
+.task{display:flex;align-items:center;gap:14px;padding:11px 0;border-top:1px solid var(--rule);transition:opacity .25s ease,transform .25s ease}
+.task:first-child{border-top:0}
+.task.gone{opacity:0;transform:translateX(24px)}
+.box{flex:0 0 30px;width:30px;height:30px;border:2.5px solid var(--ink);border-radius:8px;background:transparent;cursor:pointer;display:grid;place-items:center;padding:0}
+.task.gone .box{background:var(--good);border-color:var(--good)}
+.task.gone .box::after{content:"";width:8px;height:14px;border:solid #fff;border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-2px)}
+.task .label{font-size:17px}
+.alldone{font-size:17px;font-weight:650;margin:4px 0}
+.done-list{margin:10px 0 0;font-size:14px;color:var(--muted)}
+.done-list .row{justify-content:space-between;padding:4px 0}
+.edit-task{padding:10px 0;border-top:1px solid var(--rule);display:grid;gap:8px}
+.days{display:flex;gap:4px}
+.dchip{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--line);background:transparent;font-size:13px;font-weight:600;cursor:pointer;padding:0}
+.dchip[aria-pressed="true"]{background:var(--c-todo);border-color:var(--c-todo);color:#fff}
+.logwrap{overflow-x:auto;margin-top:12px;background:var(--surface);border-radius:12px;padding:12px}
+.log{border-collapse:collapse;font-size:12px}
+.log th{font-weight:600;color:var(--muted);padding:0 2px 6px;text-align:center;min-width:20px}
+.log th.name,.log td.name{text-align:left;padding-right:10px;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;font-size:13px;color:var(--ink)}
+.log td{padding:2px;text-align:center}
+.log td.rate{padding-left:8px;color:var(--muted);white-space:nowrap}
+.cell{display:inline-block;width:16px;height:16px;border-radius:50%}
+.cell.done{background:var(--good)}
+.cell.miss{border:2px solid var(--bad)}
+.cell.pending{border:2px dashed var(--line)}
+.cell.off,.cell.na{width:5px;height:5px;background:var(--line);vertical-align:middle}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+
+/* Games */
+.game{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:9px 0;border-top:1px solid var(--rule)}
+.day .game:first-of-type{border-top:0}
+.game .who{font-weight:650}
+.game .who i{font-style:normal;display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:1px}
+.game .time{font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.game .meta{font-size:13px;color:var(--muted)}
+.game .res{font-size:13px;text-align:right}
+.res.w{color:var(--good);font-weight:700}.res.l{color:var(--bad);font-weight:700}
+
+/* Workout */
+.wlist{margin:0 0 12px;padding:0;list-style:none}
+.wlist li{padding:8px 0;border-top:1px solid var(--rule)}
+.wlist li:first-child{border-top:0}
+.plan{width:100%;min-height:200px;resize:vertical;font-size:15px;line-height:1.4}
+.wdone{display:flex;align-items:center;gap:10px;font-weight:650;color:var(--good);margin:0 0 4px}
+
+footer{margin-top:28px;font-size:13px;color:var(--muted);display:grid;gap:10px}
+footer a{color:inherit}
+
+@media (prefers-reduced-motion:reduce){.task{transition:none}}
+@media (max-width:380px){.now .temp{font-size:70px}.ev{grid-template-columns:80px 1fr}}
+</style>
+</head>
+<body>
+<header class="band">
+  <div class="band-inner">
+    <div class="band-row">
+      <div>
+        <h1>Project Meatloaf</h1>
+        <p id="today-label"></p>
+      </div>
+      <button class="refresh" data-action="refresh" id="refresh-btn">Refresh</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="strip">
+    <section class="stop" style="--c:var(--c-weather)" aria-labelledby="h-weather">
+      <span class="bullet dark" aria-hidden="true">W</span>
+      <div class="head"><h2 id="h-weather">Weather</h2><div class="aside" id="zip-slot"></div></div>
+      <div id="weather"></div>
+    </section>
+
+    <section class="stop" style="--c:var(--c-outfit)" aria-labelledby="h-outfit">
+      <span class="bullet" aria-hidden="true">O</span>
+      <div class="head"><h2 id="h-outfit">Outfit</h2></div>
+      <div id="outfit"></div>
+    </section>
+
+    <section class="stop" style="--c:var(--c-cal)" aria-labelledby="h-cal">
+      <span class="bullet" aria-hidden="true">C</span>
+      <div class="head"><h2 id="h-cal">Next 7 days</h2><div class="aside" id="cal-aside"></div></div>
+      <div id="calendar"></div>
+    </section>
+
+    <section class="stop" style="--c:var(--c-up)" aria-labelledby="h-up">
+      <span class="bullet" aria-hidden="true">U</span>
+      <div class="head"><h2 id="h-up">Upcoming</h2></div>
+      <div id="upcoming"></div>
+    </section>
+
+    <section class="stop" style="--c:var(--c-todo)" aria-labelledby="h-todo">
+      <span class="bullet" aria-hidden="true">T</span>
+      <div class="head"><h2 id="h-todo">To-do</h2><div class="aside" id="todo-aside"></div></div>
+      <div id="todo"></div>
+    </section>
+
+    <section class="stop" style="--c:#996633" aria-labelledby="h-workout">
+      <span class="bullet" aria-hidden="true">F</span>
+      <div class="head"><h2 id="h-workout">Workout</h2><div class="aside" id="workout-aside"></div></div>
+      <div id="workout"></div>
+    </section>
+
+    <section class="stop" style="--c:var(--c-games)" aria-labelledby="h-games">
+      <span class="bullet" aria-hidden="true">G</span>
+      <div class="head"><h2 id="h-games">Games this week</h2></div>
+      <div id="games"></div>
+    </section>
+  </div>
+
+  <footer>
+    <div class="row">
+      <button class="btn sm" data-action="exportData">Back up data</button>
+      <button class="btn sm" data-action="importData">Restore backup</button>
+      <button class="btn sm" data-action="exportLog">Export history (CSV)</button>
+      <input type="file" id="import-file" accept="application/json,.json" hidden>
+      <input type="file" id="plan-file" accept=".txt,.md,text/plain" hidden>
+    </div>
+    <p>Your to-dos, log, and upcoming items are saved in this browser on this phone. Back up now and then.</p>
+    <p>Forecast from Open-Meteo. Schedules from ESPN.</p>
+  </footer>
+</main>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- Basics ---------- */
+const LS_KEY = 'meatloaf.v1';
+const DEFAULT_ZIP = '10075';
+const KNOWN_COORDS = { '10075': { lat: 40.7736, lon: -73.9566, place: 'New York, NY' } };
+const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const OFFICE_DAYS = [2,3,4]; // Tue, Wed, Thu
+
+/* Paste a workout plan between the backticks to preload it (see the Workout section for the format). */
+const EMBEDDED_PLAN = ``;
+const EMBEDDED_PLAN_START = ''; // YYYY-MM-DD, the day Week 1 / Day 1 begins
+
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2,'0');
+const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const todayKey = () => keyOf(new Date());
+const parseKey = k => { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function fmtTime(d){
+  return d.getMinutes() === 0
+    ? d.toLocaleTimeString([], { hour: 'numeric' })
+    : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+function hourLabel(h){ // 0-24 -> "6 AM"
+  h = ((h % 24) + 24) % 24;
+  if (h === 0) return '12 AM';
+  if (h === 12) return '12 PM';
+  return h < 12 ? `${h} AM` : `${h-12} PM`;
+}
+function shortHour(h){
+  h = ((h % 24) + 24) % 24;
+  if (h === 0) return '12a';
+  if (h === 12) return '12p';
+  return h < 12 ? `${h}a` : `${h-12}p`;
+}
+function fmtDay(d){ return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }); }
+function dayHeading(d){
+  const diff = Math.round((startOfDay(d) - startOfDay(new Date())) / 864e5);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  return d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+/* ---------- State ---------- */
+function defaults(){
+  const t = todayKey();
+  const every = [0,1,2,3,4,5,6];
+  return {
+    zip: DEFAULT_ZIP,
+    coords: {},
+    tasks: [
+      { id: uid(), title: 'Take your pills', days: every.slice(), created: t },
+      { id: uid(), title: 'Weigh yourself', days: every.slice(), created: t },
+      { id: uid(), title: 'Glasses out at home', days: every.slice(), created: t }
+    ],
+    log: {},
+    upcoming: [],
+    calendar: null,
+    workout: null,
+    workoutLog: {},
+    weatherCache: null,
+    sportsCache: null
+  };
+}
+function load(){
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) return Object.assign(defaults(), JSON.parse(raw));
+  } catch (e) {}
+  return defaults();
+}
+let state = load();
+function save(){ try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
+
+const ui = { editZip:false, editTasks:false, showLog:false, showAllUp:false, showAddUp:false, showCalHelp:false, editWorkout:false, workoutErr:'' };
+let weatherError = null, sportsError = null, renderedDay = todayKey();
+
+/* ---------- Calendar import from the iOS Shortcut ---------- */
+function normalizeIso(s){
+  s = s.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { return parseKey(s); }
+  s = s.replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+function importFromHash(){
+  const h = location.hash;
+  if (!h.startsWith('#cal=')) return;
+  let raw = h.slice(5);
+  for (let i = 0; i < 2 && /%[0-9A-F]{2}/i.test(raw); i++) {
+    try { raw = decodeURIComponent(raw); } catch (e) { break; }
+  }
+  const events = raw.split(/\r?\n/).map(line => {
+    const parts = line.split('|');
+    if (parts.length < 4) return null;
+    const allDay = parts.pop().trim();
+    const end = parts.pop();
+    const start = parts.pop();
+    const title = parts.join('|').trim() || 'Untitled';
+    const s = normalizeIso(start), e = normalizeIso(end);
+    if (!s) return null;
+    return { title, start: s.toISOString(), end: (e || s).toISOString(), allDay: /^(yes|true|1)$/i.test(allDay) };
+  }).filter(Boolean);
+  state.calendar = { synced: new Date().toISOString(), events };
+  save();
+  history.replaceState(null, '', location.pathname + location.search);
+}
+
+/* ---------- Weather ---------- */
+const WMO = {
+  0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Cloudy',45:'Fog',48:'Freezing fog',
+  51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',56:'Freezing drizzle',57:'Freezing drizzle',
+  61:'Light rain',63:'Rain',65:'Heavy rain',66:'Freezing rain',67:'Freezing rain',
+  71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',
+  80:'Showers',81:'Showers',82:'Heavy showers',85:'Snow showers',86:'Heavy snow showers',
+  95:'Thunderstorms',96:'Thunderstorms, hail',99:'Thunderstorms, hail'
+};
+const isSnowCode = c => [71,73,75,77,85,86].includes(c);
+
+async function getCoords(zip){
+  if (KNOWN_COORDS[zip]) return KNOWN_COORDS[zip];
+  if (state.coords[zip]) return state.coords[zip];
+  const r = await fetch(`https://api.zippopotam.us/us/${zip}`);
+  if (!r.ok) throw new Error(`Zip code ${zip} wasn't found.`);
+  const j = await r.json();
+  const p = j.places && j.places[0];
+  if (!p) throw new Error(`Zip code ${zip} wasn't found.`);
+  const c = { lat: +p.latitude, lon: +p.longitude, place: `${p['place name']}, ${p['state abbreviation']}` };
+  state.coords[zip] = c; save();
+  return c;
+}
+
+async function loadWeather(force){
+  const wc = state.weatherCache;
+  const fresh = wc && wc.zip === state.zip && (Date.now() - wc.fetched) < 30*60e3 && wc.data?.daily?.time?.[0] === todayKey();
+  if (!force && fresh) { renderWeather(); renderOutfit(); return; }
+  try {
+    const c = await getCoords(state.zip);
+    const params = new URLSearchParams({
+      latitude: c.lat, longitude: c.lon,
+      current: 'temperature_2m,apparent_temperature,weather_code',
+      hourly: 'temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m',
+      daily: 'weather_code,precipitation_sum,snowfall_sum,precipitation_probability_max,wind_speed_10m_max,uv_index_max,sunrise,sunset',
+      temperature_unit: 'fahrenheit', wind_speed_unit: 'mph', precipitation_unit: 'inch',
+      timezone: 'auto', forecast_days: '2'
+    });
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
+    if (!r.ok) throw new Error(`The weather service answered with an error (${r.status}).`);
+    const data = await r.json();
+    state.weatherCache = { zip: state.zip, fetched: Date.now(), place: c.place, lat: c.lat, lon: c.lon, data };
+    weatherError = null;
+    save();
+  } catch (e) {
+    weatherError = e.message && !/Failed to fetch|NetworkError|Load failed/i.test(e.message)
+      ? e.message : "Couldn't reach the weather service. Check your connection and tap Refresh.";
+  }
+  renderWeather(); renderOutfit();
+}
+
+function summarize(data){
+  if (!data || !data.hourly || !data.daily) return null;
+  const day = data.daily.time[0];
+  const H = data.hourly;
+  const idx = [];
+  H.time.forEach((t,i) => { if (t.startsWith(day)) idx.push(i); });
+  if (!idx.length) return null;
+  const hr = i => +H.time[i].slice(11,13);
+  let hi = idx[0], lo = idx[0];
+  idx.forEach(i => {
+    if (H.temperature_2m[i] > H.temperature_2m[hi]) hi = i;
+    if (H.temperature_2m[i] < H.temperature_2m[lo]) lo = i;
+  });
+  const wake = idx.filter(i => hr(i) >= 7 && hr(i) <= 22);
+  const range = (arr, key) => {
+    const v = arr.map(i => H[key][i]).filter(x => x != null);
+    return v.length ? [Math.min(...v), Math.max(...v)] : [null, null];
+  };
+  const [feelLo, feelHi] = range(wake, 'apparent_temperature');
+  const probs = wake.map(i => H.precipitation_probability[i] ?? 0);
+  const maxProb = probs.length ? Math.max(...probs) : 0;
+
+  // Rain/snow windows: consecutive waking hours at 40%+
+  const windows = [];
+  let s = null, p = null;
+  wake.forEach(i => {
+    if ((H.precipitation_probability[i] ?? 0) >= 40) { if (s === null) s = i; p = i; }
+    else if (s !== null) { windows.push([hr(s), hr(p)+1]); s = null; }
+  });
+  if (s !== null) windows.push([hr(s), hr(p)+1]);
+
+  const curKey = (data.current?.time || '').slice(0,13);
+  let curIdx = H.time.findIndex(t => t.slice(0,13) === curKey);
+  if (curIdx < 0) curIdx = idx[0];
+  const strip = [];
+  for (let i = curIdx; i < H.time.length && strip.length < 16; i++) strip.push(i);
+
+  const snowHours = wake.some(i => isSnowCode(H.weather_code[i]) && (H.precipitation_probability[i] ?? 0) >= 30);
+
+  return {
+    H, hr, idx, wake, strip,
+    high: Math.round(H.temperature_2m[hi]), highAt: hr(hi),
+    low: Math.round(H.temperature_2m[lo]), lowAt: hr(lo),
+    feelLo: feelLo == null ? null : Math.round(feelLo), feelHi: feelHi == null ? null : Math.round(feelHi),
+    maxProb, windows,
+    total: data.daily.precipitation_sum[0] ?? 0,
+    snow: data.daily.snowfall_sum ? (data.daily.snowfall_sum[0] ?? 0) : 0,
+    snowy: snowHours,
+    wind: Math.round(data.daily.wind_speed_10m_max[0] ?? 0),
+    uv: Math.round(data.daily.uv_index_max[0] ?? 0),
+    sunset: data.daily.sunset?.[0],
+    code: data.daily.weather_code[0],
+    now: data.current ? Math.round(data.current.temperature_2m) : null,
+    nowFeel: data.current ? Math.round(data.current.apparent_temperature) : null,
+    nowCode: data.current ? data.current.weather_code : data.daily.weather_code[0]
+  };
+}
+
+function renderZip(){
+  const el = $('#zip-slot');
+  const wc = state.weatherCache;
+  if (ui.editZip) {
+    el.innerHTML = `<form data-form="zip" class="zipform">
+      <input class="field" name="zip" inputmode="numeric" maxlength="5" value="${esc(state.zip)}" aria-label="Zip code" autocomplete="postal-code">
+      <button class="btn solid sm" type="submit">Save</button>
+      <button class="linkbtn" type="button" data-action="cancelZip">Cancel</button></form>`;
+    const input = el.querySelector('input'); input.focus(); input.select();
+  } else {
+    const place = wc && wc.zip === state.zip && wc.place ? ` <span>${esc(wc.place)}</span>` : '';
+    el.innerHTML = `<button class="chip" data-action="editZip" aria-label="Change zip code, currently ${esc(state.zip)}">${esc(state.zip)}${place}</button>`;
+  }
+}
+
+function renderWeather(){
+  renderZip();
+  const el = $('#weather');
+  const wc = state.weatherCache;
+  if (!wc || wc.zip !== state.zip) {
+    el.innerHTML = weatherError ? `<p class="err">${esc(weatherError)}</p>` : `<p class="muted">Loading the forecast…</p>`;
+    return;
+  }
+  const s = summarize(wc.data);
+  if (!s || wc.data.daily.time[0] !== todayKey()) {
+    el.innerHTML = `<p class="err">${esc(weatherError || "The saved forecast isn't for today.")} Tap Refresh to try again.</p>`;
+    return;
+  }
+  const errNote = weatherError
+    ? `<p class="err">Couldn't update. Showing the forecast from ${fmtTime(new Date(wc.fetched))}.</p>` : '';
+  const precipWord = s.snowy ? 'snow' : 'rain';
+  let precipSub;
+  if (s.maxProb < 20) precipSub = 'Looks dry';
+  else if (s.windows.length) precipSub = `Most likely ${s.windows.map(w => `${hourLabel(w[0])}–${hourLabel(w[1])}`).join(', ')}`;
+  else precipSub = `Low odds of ${precipWord}`;
+  const amount = s.snow > 0.05 ? `${s.snow.toFixed(1)} in snow` : `${s.total.toFixed(2)} in`;
+  const sunset = s.sunset ? `Sunset ${fmtTime(new Date(s.sunset))}.` : '';
+  const hours = s.strip.map(i => {
+    const p = s.H.precipitation_probability[i] ?? 0;
+    return `<div class="hour">${shortHour(s.hr(i))}<b>${Math.round(s.H.temperature_2m[i])}°</b><span class="p${p < 20 ? ' none' : ''}">${p}%</span></div>`;
+  }).join('');
+  const nws = `https://forecast.weather.gov/MapClick.php?lat=${wc.lat}&lon=${wc.lon}`;
+
+  el.innerHTML = `${errNote}
+    <div class="now">
+      <div class="temp">${s.now ?? s.high}°</div>
+      <div class="cond">${esc(WMO[s.nowCode] || '')}<span>Feels like ${s.nowFeel ?? s.feelHi}° now</span></div>
+    </div>
+    <dl class="facts">
+      <div><dt>High</dt><dd>${s.high}°<small>around ${hourLabel(s.highAt)}</small></dd></div>
+      <div><dt>Low</dt><dd>${s.low}°<small>around ${hourLabel(s.lowAt)}</small></dd></div>
+      <div><dt>Feels like</dt><dd>${s.feelLo}° to ${s.feelHi}°<small>7 AM to 10 PM</small></dd></div>
+      <div><dt>Chance of ${precipWord}</dt><dd>${s.maxProb}%<small>${esc(precipSub)}. ${amount}</small></dd></div>
+    </dl>
+    <div class="hours" aria-label="Hourly forecast">${hours}</div>
+    <p class="note">Wind up to ${s.wind} mph. UV index ${s.uv}. ${sunset} <a href="${nws}" target="_blank" rel="noopener">Hourly detail on weather.gov</a></p>`;
+}
+
+/* ---------- Outfit ---------- */
+function band(t){
+  if (t <= 25) return 0;   // bitter
+  if (t <= 40) return 1;   // cold
+  if (t <= 52) return 2;   // cool
+  if (t <= 64) return 3;   // mild
+  if (t <= 75) return 4;   // warm
+  if (t <= 85) return 5;   // hot
+  return 6;                // very hot
+}
+const OFFICE = {
+  top: ['Oxford shirt under a merino crewneck','Oxford shirt with a merino sweater','Oxford shirt with a quarter-zip or cardigan',
+        'Oxford shirt or long-sleeve knit polo','Lightweight button-down, sleeves rolled','Linen-blend or seersucker button-down',
+        'Short-sleeve linen-blend shirt or knit polo'],
+  bottom: ['Wool or flannel trousers','Wool or flannel trousers','Chinos or wool trousers','Chinos','Chinos',
+           'Lightweight chinos or tropical-wool trousers','Lightweight chinos'],
+  layer: ['Wool overcoat, scarf, and gloves','Wool topcoat and a scarf','Unstructured blazer with a trench or mac over it',
+          'Unstructured blazer or a light jacket','Blazer optional, handy for office AC','None. Keep a light layer at your desk.',
+          'None. Keep a light layer at your desk.'],
+  shoes: ['Leather boots','Leather boots or brogues','Leather boots or brogues','Loafers or clean leather sneakers',
+          'Loafers or clean leather sneakers','Loafers with no-show socks','Loafers with no-show socks']
+};
+const OFFDAY = {
+  top: ['Thermal under a flannel or heavy sweater','Flannel shirt or a sweater','Tee with an overshirt, or a hoodie',
+        'Henley or long-sleeve tee','Tee or polo','Light tee or linen shirt','Light tee or linen shirt'],
+  bottom: ['Jeans','Jeans','Jeans','Jeans or chinos','Chinos or shorts','Shorts','Shorts'],
+  layer: ['Parka or puffer, beanie, and gloves','Insulated jacket and a beanie','Chore coat, bomber, or denim jacket',
+          'Light jacket or overshirt for later','None, maybe a light layer for the evening','None needed','None needed'],
+  shoes: ['Winter boots','Boots or sneakers','Boots or sneakers','Sneakers','Sneakers','Sneakers','Sneakers or sandals']
+};
+
+function renderOutfit(){
+  const el = $('#outfit');
+  const wc = state.weatherCache;
+  const s = wc && wc.zip === state.zip && wc.data?.daily?.time?.[0] === todayKey() ? summarize(wc.data) : null;
+  const dow = new Date().getDay();
+  const office = OFFICE_DAYS.includes(dow);
+  if (!s) { el.innerHTML = `<p class="muted">Suggestions appear once the forecast loads.</p>`; return; }
+
+  // Hours you're likely out and about
+  const outHours = s.wake.filter(i => office ? (s.hr(i) >= 7 && s.hr(i) <= 19) : (s.hr(i) >= 9 && s.hr(i) <= 22));
+  const feels = outHours.map(i => s.H.apparent_temperature[i]).filter(v => v != null);
+  const coldest = feels.length ? Math.min(...feels) : s.feelLo;
+  const warmest = feels.length ? Math.max(...feels) : s.feelHi;
+  const warmB = band(warmest), coldB = band(coldest);
+  const rainOdds = Math.max(0, ...outHours.map(i => s.H.precipitation_probability[i] ?? 0));
+  const set = office ? OFFICE : OFFDAY;
+
+  let shoes = set.shoes[coldB];
+  if (s.snowy && coldB <= 2) shoes = 'Waterproof boots';
+  else if (rainOdds >= 50) shoes = office ? 'Leather boots or rubber-soled shoes, skip suede' : "Waterproof boots or sneakers you don't mind soaking";
+
+  const tips = [];
+  if (rainOdds >= 50) tips.push(`Bring an umbrella. ${rainOdds}% chance while you're out.`);
+  else if (rainOdds >= 30) tips.push(`Toss a compact umbrella in your bag (${rainOdds}% chance).`);
+  if (rainOdds >= 50 && coldB <= 3) tips.push('Make the outer layer water-resistant.');
+  if (warmest - coldest >= 15) tips.push(`Big swing today, ${Math.round(coldest)}° to ${Math.round(warmest)}° feels-like. Layer so you can shed.`);
+  if (s.wind >= 20) tips.push(`Windy, gusting to ${s.wind} mph. Pick an outer layer that blocks wind.`);
+  if (s.uv >= 7 && warmB >= 4) tips.push('Strong sun. Sunglasses and sunscreen.');
+
+  const headline = office ? 'Office day, business casual'
+    : dow === 5 ? 'Friday, no office. Wear whatever.'
+    : 'Weekend. Wear whatever.';
+
+  el.innerHTML = `<p class="kicker">${headline}</p>
+    <ul class="fit">
+      <li><span>Top</span><div>${esc(set.top[warmB])}</div></li>
+      <li><span>Bottoms</span><div>${esc(set.bottom[warmB])}</div></li>
+      <li><span>Layer</span><div>${esc(set.layer[coldB])}</div></li>
+      <li><span>Shoes</span><div>${esc(shoes)}</div></li>
+    </ul>
+    ${tips.length ? `<ul class="tips">${tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+    <p class="note">Based on a feels-like range of ${Math.round(coldest)}° to ${Math.round(warmest)}° during the hours you're usually out.</p>`;
+}
+
+/* ---------- Calendar ---------- */
+function renderCalendar(){
+  const el = $('#calendar'), aside = $('#cal-aside');
+  const cal = state.calendar;
+  const pageUrl = location.origin + location.pathname + '#cal=';
+  const help = `<div class="help">
+      <strong>Connect your iPhone calendar</strong>
+      <p class="muted" style="margin-top:4px">A Shortcut reads Calendar on your phone and opens this page with the next week's events. Nothing leaves your phone except to this page.</p>
+      <ol>
+        <li>Open Shortcuts, tap <b>+</b>, and name it <b>Meatloaf</b>.</li>
+        <li>Add <b>Find Calendar Events</b>. Add the filter <b>Start Date is in the next 7 days</b>, sort by Start Date, oldest first.</li>
+        <li>Add <b>Repeat with Each</b>. Inside it, add a <b>Text</b> action containing:<br><code>Title|Start Date|End Date|Is All Day</code><br>using the Repeat Item's variables. Tap each date variable and set its format to <b>ISO 8601</b> with time included.</li>
+        <li>After End Repeat, add <b>Combine Text</b> (Repeat Results, with New Lines), then <b>URL Encode</b>.</li>
+        <li>Add a <b>Text</b> action: <code>${esc(pageUrl)}</code> followed by the URL Encoded Text variable. Then add <b>Open URLs</b>.</li>
+        <li>Add the shortcut to your Home Screen. Tap it each morning to open Meatloaf with a fresh calendar.</li>
+      </ol>
+      <button class="btn sm" data-action="copyUrl">Copy page link for step 5</button>
+    </div>`;
+
+  if (!cal) {
+    aside.innerHTML = '';
+    el.innerHTML = `<p class="muted">Your calendar isn't connected yet.</p>${help}`;
+    return;
+  }
+  const synced = new Date(cal.synced);
+  const stale = keyOf(synced) !== todayKey();
+  aside.innerHTML = `<span${stale ? ' style="color:var(--bad)"' : ''}>Synced ${stale ? fmtDay(synced) : fmtTime(synced)}</span>`;
+
+  const start = startOfDay(new Date());
+  const now = new Date();
+  const days = [];
+  for (let i = 0; i < 7; i++) days.push({ date: addDays(start, i), items: [] });
+  cal.events.forEach(ev => {
+    const s = new Date(ev.start);
+    let e = new Date(ev.end);
+    if (ev.allDay && e <= s) e = addDays(startOfDay(s), 1);
+    days.forEach(d => {
+      const dEnd = addDays(d.date, 1);
+      if (ev.allDay) {
+        if (s < dEnd && e > d.date) d.items.push(ev);
+      } else if (s >= d.date && s < dEnd) d.items.push(ev);
+    });
+  });
+  const body = days.filter(d => d.items.length).map(d => {
+    d.items.sort((a,b) => (b.allDay - a.allDay) || (new Date(a.start) - new Date(b.start)));
+    return `<div class="day"><h3>${esc(dayHeading(d.date))}</h3>${d.items.map(ev => {
+      const s = new Date(ev.start), e = new Date(ev.end);
+      const time = ev.allDay ? 'All day' : `${fmtTime(s)}${+e > +s ? `–${fmtTime(e)}` : ''}`;
+      const past = !ev.allDay && e < now;
+      return `<div class="ev${past ? ' past' : ''}"><div class="t">${time}</div><div>${esc(ev.title)}</div></div>`;
+    }).join('')}</div>`;
+  }).join('');
+
+  el.innerHTML = `${stale ? `<p class="err">This is from ${fmtDay(synced)}. Open Meatloaf from your Shortcut to update it.</p>` : ''}
+    ${body || '<p class="muted">Nothing on the calendar for the next 7 days.</p>'}
+    <button class="linkbtn" data-action="toggleCalHelp">${ui.showCalHelp ? 'Hide setup steps' : 'Shortcut setup steps'}</button>
+    ${ui.showCalHelp ? help : ''}`;
+}
+
+/* ---------- Upcoming ---------- */
+function daysUntil(k){ return Math.round((parseKey(k) - parseKey(todayKey())) / 864e5); }
+function whenLabel(n){
+  if (n < 0) return `${-n} day${n === -1 ? '' : 's'} overdue`;
+  if (n === 0) return 'Today';
+  if (n === 1) return 'Tomorrow';
+  return `In ${n} days`;
+}
+function renderUpcoming(){
+  const el = $('#upcoming');
+  const active = state.upcoming.filter(u => !u.addressed && daysUntil(u.date) <= 30)
+    .sort((a,b) => a.date.localeCompare(b.date));
+  const list = active.map(u => {
+    const n = daysUntil(u.date);
+    return `<div class="up">
+      <div><div class="title">${esc(u.title)}</div>
+      <div class="when${n <= 7 ? ' soon' : ''}">${whenLabel(n)}, ${fmtDay(parseKey(u.date))}</div></div>
+      <button class="btn sm" data-action="addressUp" data-id="${u.id}">Mark addressed</button>
+      ${u.note ? `<div class="memo">${esc(u.note)}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const hiddenCount = state.upcoming.length - active.length;
+  const all = state.upcoming.slice().sort((a,b) => a.date.localeCompare(b.date)).map(u => {
+    const n = daysUntil(u.date);
+    let status;
+    if (u.addressed) status = `Addressed ${u.addressedOn ? fmtDay(parseKey(u.addressedOn)) : ''}`;
+    else if (n > 30) status = `Shows up ${fmtDay(addDays(parseKey(u.date), -30))}`;
+    else status = 'Showing now';
+    return `<div class="up">
+      <div><div class="title">${esc(u.title)}</div><div class="when">${fmtDay(parseKey(u.date))}. ${esc(status)}</div></div>
+      <div class="row">
+        ${u.addressed ? `<button class="linkbtn" data-action="restoreUp" data-id="${u.id}">Restore</button>` : ''}
+        <button class="linkbtn" data-action="deleteUp" data-id="${u.id}">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    ${list || `<p class="muted">Nothing due in the next 30 days.${state.upcoming.length ? '' : ' Add dates like renewals, birthdays, or appointments, and they\'ll show up here a month ahead.'}</p>`}
+    ${ui.showAddUp ? `<form class="addform" data-form="addUp">
+        <input class="field wide" name="title" placeholder="What's coming up" required maxlength="120" aria-label="What's coming up">
+        <input class="field" name="date" type="date" required aria-label="Date">
+        <input class="field" name="note" placeholder="Note (optional)" maxlength="200" aria-label="Note">
+        <div class="row wide"><button class="btn solid sm" type="submit">Add item</button>
+        <button class="linkbtn" type="button" data-action="toggleAddUp">Cancel</button></div>
+      </form>`
+      : `<div class="row" style="margin-top:10px"><button class="btn sm" data-action="toggleAddUp">Add an item</button>
+        ${state.upcoming.length ? `<button class="linkbtn" data-action="toggleAllUp">${ui.showAllUp ? 'Hide all items' : `All items (${state.upcoming.length}${hiddenCount ? `, ${hiddenCount} hidden` : ''})`}</button>` : ''}</div>`}
+    ${ui.showAllUp && all ? `<div class="all">${all}</div>` : ''}`;
+}
+
+/* ---------- To-do + log ---------- */
+function statusFor(task, k){
+  const d = parseKey(k);
+  if (k < task.created) return 'na';
+  if (task.archivedOn && k >= task.archivedOn) return 'na';
+  if (!task.days.includes(d.getDay())) return 'off';
+  if ((state.log[k] || []).includes(task.id)) return 'done';
+  return k === todayKey() ? 'pending' : 'miss';
+}
+function rate30(task){
+  let done = 0, due = 0;
+  for (let i = 0; i < 30; i++) {
+    const k = keyOf(addDays(new Date(), -i));
+    const st = statusFor(task, k);
+    if (st === 'done') { done++; due++; }
+    else if (st === 'miss') due++;
+  }
+  return due ? `${Math.round(done / due * 100)}%` : '–';
+}
+function renderTodo(){
+  const el = $('#todo'), aside = $('#todo-aside');
+  const tk = todayKey(), dow = new Date().getDay();
+  const todays = state.tasks.filter(t => !t.archived && t.days.includes(dow));
+  const doneIds = new Set(state.log[tk] || []);
+  const open = todays.filter(t => !doneIds.has(t.id));
+  const done = todays.filter(t => doneIds.has(t.id));
+  aside.textContent = todays.length ? `${done.length} of ${todays.length} done` : '';
+
+  if (ui.editTasks) {
+    el.innerHTML = `${state.tasks.filter(t => !t.archived).map(t => `<div class="edit-task">
+        <div class="row" style="justify-content:space-between"><strong>${esc(t.title)}</strong>
+        <button class="linkbtn" data-action="deleteTask" data-id="${t.id}">Delete</button></div>
+        <div class="days" role="group" aria-label="Days for ${esc(t.title)}">${DOW.map((d,i) =>
+          `<button class="dchip" data-action="toggleDay" data-id="${t.id}" data-day="${i}" aria-pressed="${t.days.includes(i)}" aria-label="${d}">${d[0]}</button>`).join('')}</div>
+      </div>`).join('')}
+      <form data-form="addTask" class="row" style="margin-top:12px">
+        <input class="field" name="title" placeholder="New daily task" required maxlength="80" style="flex:1" aria-label="New daily task">
+        <button class="btn solid sm" type="submit">Add</button>
+      </form>
+      <button class="btn sm" style="margin-top:12px" data-action="toggleEditTasks">Done editing</button>`;
+    return;
+  }
+
+  const openHtml = open.map(t => `<div class="task" data-task="${t.id}">
+      <button class="box" data-action="check" data-id="${t.id}" aria-label="Mark “${esc(t.title)}” done"></button>
+      <span class="label">${esc(t.title)}</span></div>`).join('');
+  const doneHtml = done.length ? `<div class="done-list">${done.map(t => `<div class="row"><span>✓ ${esc(t.title)}</span>
+      <button class="linkbtn" data-action="undo" data-id="${t.id}">Undo</button></div>`).join('')}</div>` : '';
+
+  el.innerHTML = `${open.length ? openHtml : `<p class="alldone">${todays.length ? 'All done for today.' : 'Nothing scheduled today.'}</p>`}
+    ${doneHtml}
+    <div class="row" style="margin-top:12px">
+      <button class="btn sm" data-action="toggleLog">${ui.showLog ? 'Hide log' : 'Show log'}</button>
+      <button class="linkbtn" data-action="toggleEditTasks">Edit list</button>
+    </div>
+    ${ui.showLog ? renderLog() : ''}`;
+}
+function renderLog(){
+  const live = state.tasks.filter(t => !t.archived);
+  if (!live.length && !state.workout) return '<p class="note">Add a task to start the log.</p>';
+  const days = [];
+  for (let i = 13; i >= 0; i--) days.push(addDays(new Date(), -i));
+  const head = `<tr><th class="name">Last 14 days</th>${days.map(d =>
+    `<th>${DOW[d.getDay()][0]}<br>${d.getDate()}</th>`).join('')}<th>30 days</th></tr>`;
+  const label = st => ({ done:'Done', miss:'Missed', pending:'Not yet', off:'Not scheduled', na:'Before tracking started' }[st]);
+  let rows = live.map(t => `<tr><td class="name" title="${esc(t.title)}">${esc(t.title)}</td>${days.map(d => {
+    const st = statusFor(t, keyOf(d));
+    return `<td><span class="cell ${st}" title="${fmtDay(d)}: ${label(st)}" aria-label="${fmtDay(d)}: ${label(st)}"></span></td>`;
+  }).join('')}<td class="rate">${rate30(t)}</td></tr>`).join('');
+  if (state.workout) rows += `<tr><td class="name">Workout</td>${days.map(d => {
+    const st = workoutStatus(keyOf(d));
+    return `<td><span class="cell ${st}" title="${fmtDay(d)}: ${label(st)}" aria-label="${fmtDay(d)}: ${label(st)}"></span></td>`;
+  }).join('')}<td class="rate">${workoutRate30()}</td></tr>`;
+  return `<div class="logwrap"><table class="log">${head}${rows}</table>
+    <div class="legend"><span><i class="cell done"></i>Done</span><span><i class="cell miss"></i>Missed</span>
+    <span><i class="cell pending"></i>Today, not yet</span><span><i class="cell off"></i>Not scheduled</span></div>
+    <button class="btn sm" style="margin-top:12px" data-action="exportLog">Export history (CSV)</button></div>`;
+}
+
+/* ---------- Workout ---------- */
+const WD = { sun:0, sunday:0, mon:1, monday:1, tue:2, tues:2, tuesday:2, wed:3, wednesday:3,
+             thu:4, thur:4, thurs:4, thursday:4, fri:5, friday:5, sat:6, saturday:6 };
+const DAY_NAMES = 'sunday|sun|monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thurs|thur|thu|friday|fri|saturday|sat';
+const RE_WEEK = /^week\s*(\d+)\s*(?:$|[:.\-–—]\s*(.*)$)/i;
+const RE_DAYN = /^(?:week\s*(\d+)\s*[,:\-–—]?\s*)?day\s*(\d+)\s*(?:$|[:.\-–—)]\s*(.*)$)/i;
+const RE_WDAY = new RegExp(`^(?:week\\s*(\\d+)\\s*[,:\\-–—]?\\s*)?(${DAY_NAMES})\\.?\\s*(?:$|[:\\-–—]\\s*(.*)$)`, 'i');
+
+function parsePlan(text){
+  const days = [];
+  let week = null, cur = null, stray = 0;
+  text.split(/\r?\n/).forEach(raw => {
+    const line = raw.replace(/\t/g, ' ').trim();
+    if (!line) return;
+    let m;
+    if ((m = line.match(RE_DAYN))) {
+      if (m[1]) week = +m[1];
+      cur = { kind:'n', week, n:+m[2], title:(m[3] || '').trim(), items:[] }; days.push(cur); return;
+    }
+    if ((m = line.match(RE_WDAY))) {
+      if (m[1]) week = +m[1];
+      cur = { kind:'w', week, dow: WD[m[2].toLowerCase()], title:(m[3] || '').trim(), items:[] }; days.push(cur); return;
+    }
+    if ((m = line.match(RE_WEEK))) { week = +m[1]; cur = null; return; }
+    const item = line.replace(/^(?:[-*•·▪◦]|\d+[.)])\s*/, '');
+    if (cur) cur.items.push(item); else stray++;
+  });
+  if (!days.length) throw new Error('No days found. Start each day with a line like "Mon: Upper body" or "Day 1: Push".');
+  const kinds = new Set(days.map(d => d.kind));
+  if (kinds.size > 1) throw new Error('Use either weekday names (Mon, Tue) or numbered days (Day 1, Day 2), not both.');
+  return { mode: days[0].kind, days, stray };
+}
+
+const isRestDay = d => !d || d.rest || /^rest\b/i.test(d.title || '') ||
+  (!d.title && (!d.items.length || (d.items.length === 1 && /^rest\b/i.test(d.items[0]))));
+
+function workoutFor(date){
+  const w = state.workout;
+  if (!w) return null;
+  const start = parseKey(w.start);
+  const diff = Math.round((startOfDay(date) - start) / 864e5);
+  const weeks = [...new Set(w.days.map(d => d.week).filter(x => x != null))];
+  const numWeeks = weeks.length ? Math.max(...weeks) : 0;
+  if (w.mode === 'n') {
+    if (diff < 0) return { before:true };
+    if (numWeeks) {
+      const wk = Math.floor(diff / 7) % numWeeks + 1, dn = diff % 7 + 1;
+      return Object.assign({ pos:`Week ${wk} of ${numWeeks}, day ${dn}` }, w.days.find(d => d.week === wk && d.n === dn) || { rest:true });
+    }
+    const maxN = Math.max(...w.days.map(d => d.n));
+    const dn = diff % maxN + 1;
+    return Object.assign({ pos:`Day ${dn} of ${maxN}` }, w.days.find(d => d.n === dn) || { rest:true });
+  }
+  const dow = date.getDay();
+  if (numWeeks) {
+    const monday0 = addDays(start, -((start.getDay() + 6) % 7));
+    const sinceMon = Math.round((startOfDay(date) - monday0) / 864e5);
+    if (diff < 0) return { before:true };
+    const wk = Math.floor(sinceMon / 7) % numWeeks + 1;
+    return Object.assign({ pos:`Week ${wk} of ${numWeeks}` }, w.days.find(d => d.week === wk && d.dow === dow) || { rest:true });
+  }
+  return w.days.find(d => d.dow === dow) || { rest:true };
+}
+function workoutStatus(k){
+  if (state.workoutLog[k]) return 'done';
+  const w = state.workout;
+  if (!w || k < w.loaded) return 'na';
+  const d = workoutFor(parseKey(k));
+  if (!d || d.before || isRestDay(d)) return 'off';
+  return k === todayKey() ? 'pending' : 'miss';
+}
+function workoutRate30(){
+  let done = 0, due = 0;
+  for (let i = 0; i < 30; i++) {
+    const st = workoutStatus(keyOf(addDays(new Date(), -i)));
+    if (st === 'done') { done++; due++; } else if (st === 'miss') due++;
+  }
+  return due ? `${Math.round(done / due * 100)}%` : '–';
+}
+function workoutTitle(d){ return d.title || (d.items[0] && d.items.length > 1 ? 'Workout' : d.items[0]) || 'Workout'; }
+
+function renderWorkout(){
+  const el = $('#workout'), aside = $('#workout-aside');
+  const w = state.workout;
+  if (ui.editWorkout) {
+    aside.textContent = '';
+    el.innerHTML = `<form data-form="workout" class="stack">
+        <label for="plan-text" class="small">Paste your plan or upload a text file.</label>
+        ${ui.workoutErr ? `<p class="err" role="alert">${esc(ui.workoutErr)}</p>` : ''}
+        <textarea id="plan-text" class="field plan" name="plan" spellcheck="false" placeholder="Mon: Upper body&#10;- Bench press 3x8&#10;- Rows 3x10&#10;Tue: Run 3 miles easy&#10;Wed: Rest">${esc(ui.draftPlan ?? (w ? w.text : ''))}</textarea>
+        <label class="small row">First day of the plan
+          <input class="field" type="date" name="start" value="${esc(w ? w.start : todayKey())}"></label>
+        <p class="note" style="margin-top:0">Start each day with a weekday (Mon:) or a number (Day 1:), then list the exercises on the lines below. For multi-week programs, add Week 1, Week 2 headings. Days you leave out count as rest days.</p>
+        <div class="row">
+          <button class="btn solid sm" type="submit">Save plan</button>
+          <button class="btn sm" type="button" data-action="uploadPlan">Upload file</button>
+          <button class="linkbtn" type="button" data-action="cancelWorkout">Cancel</button>
+          ${w ? '<button class="linkbtn" type="button" data-action="removeWorkout">Remove plan</button>' : ''}
+        </div>
+      </form>`;
+    return;
+  }
+  if (!w) {
+    aside.textContent = '';
+    el.innerHTML = `<p class="muted">No workout plan loaded yet.</p><button class="btn sm" data-action="editWorkout">Load a plan</button>`;
+    return;
+  }
+  const now = new Date(), k = todayKey();
+  const today = workoutFor(now), tmr = workoutFor(addDays(now, 1));
+  aside.textContent = today && today.pos ? today.pos : '';
+  let body;
+  if (today.before) body = `<p class="kicker">Your plan starts ${fmtDay(parseKey(w.start))}.</p>`;
+  else if (isRestDay(today)) body = `<p class="kicker">Rest day</p>${today.items && today.items.length ? `<ul class="wlist">${today.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : ''}`;
+  else {
+    const doneEntry = state.workoutLog[k];
+    const items = today.title ? today.items : today.items.slice(today.items.length > 1 ? 0 : 1);
+    body = `<p class="kicker">${esc(workoutTitle(today))}</p>
+      ${items.length ? `<ul class="wlist">${items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : ''}
+      ${doneEntry
+        ? `<div class="row"><span class="wdone">✓ Workout done</span><button class="linkbtn" data-action="workoutUndo">Undo</button></div>`
+        : `<button class="btn solid sm" data-action="workoutDone">Mark workout done</button>`}`;
+  }
+  const next = !tmr || tmr.before ? '' : isRestDay(tmr) ? 'Rest day' : workoutTitle(tmr);
+  el.innerHTML = `${body}
+    ${next ? `<p class="note">Tomorrow: ${esc(next)}</p>` : ''}
+    <button class="linkbtn" data-action="editWorkout">Edit plan</button>`;
+}
+
+/* ---------- CSV history export ---------- */
+function download(name, text, type){
+  const blob = new Blob([text], { type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function buildCsv(){
+  const rows = [['date','weekday','item','type','status']];
+  const word = { done:'done', miss:'missed', pending:'not yet' };
+  const starts = [...Object.keys(state.log), ...Object.keys(state.workoutLog), ...state.tasks.map(t => t.created),
+    state.workout && state.workout.loaded].filter(Boolean).sort();
+  const today = todayKey();
+  let d = parseKey(starts[0] || today);
+  for (let guard = 0; keyOf(d) <= today && guard < 4000; guard++, d = addDays(d, 1)) {
+    const k = keyOf(d), wd = DOW[d.getDay()];
+    state.tasks.forEach(t => { const st = statusFor(t, k); if (word[st]) rows.push([k, wd, t.title, 'task', word[st]]); });
+    const ws = workoutStatus(k);
+    if (word[ws]) {
+      const plan = state.workoutLog[k] && state.workoutLog[k].title || (() => { const p = workoutFor(d); return p && !p.before ? workoutTitle(p) : 'Workout'; })();
+      rows.push([k, wd, plan, 'workout', word[ws]]);
+    }
+  }
+  return rows.map(r => r.map(c => /[",\n]/.test(c) ? `"${String(c).replace(/"/g, '""')}"` : c).join(',')).join('\n');
+}
+
+/* ---------- Games ---------- */
+const TEAMS = [
+  { key:'nyr', name:'Rangers', match:'Rangers', color:'#0038a8',
+    sources:[{ sport:'hockey', league:'nhl', team:'nyr', scoreboard:true }] },
+  { key:'lal', name:'Lakers', match:'Lakers', color:'#552583',
+    sources:[{ sport:'basketball', league:'nba', team:'lal', scoreboard:true }] },
+  { key:'van', name:'Vanderbilt', match:'Vanderbilt', color:'#a8894f',
+    sources:[{ sport:'football', league:'college-football', team:'238', label:'Football' },
+             { sport:'basketball', league:'mens-college-basketball', team:'238', label:"Men's basketball" }] }
+];
+const ESPN = 'https://site.api.espn.com/apis/site/v2/sports';
+
+function normGame(ev, team, src){
+  const comp = ev.competitions && ev.competitions[0];
+  if (!comp) return null;
+  const cs = comp.competitors || [];
+  const nameOf = c => (c.team && (c.team.displayName || c.team.name || c.team.location)) || '';
+  const us = cs.find(c => nameOf(c).includes(team.match));
+  if (!us) return null;
+  const them = cs.find(c => c !== us);
+  const st = ((comp.status || ev.status || {}).type) || {};
+  const sc = c => c == null || c.score == null ? null : (typeof c.score === 'object' ? c.score.displayValue : c.score);
+  const tv = (comp.broadcasts || []).flatMap(b => b.names || (b.media && b.media.shortName ? [b.media.shortName] : [])).filter(Boolean);
+  const seasonType = (ev.seasonType && ev.seasonType.type) ?? (ev.season && ev.season.type);
+  return {
+    id: String(ev.id), team: team.key, label: src.label || '', date: ev.date,
+    tbd: comp.timeValid === false || ev.timeValid === false,
+    home: us.homeAway === 'home', neutral: !!comp.neutralSite,
+    opp: them ? (them.team.shortDisplayName || them.team.displayName || 'TBD') : 'TBD',
+    state: st.state || 'pre', detail: st.shortDetail || '',
+    us: sc(us), them: sc(them), winner: us.winner,
+    tv: [...new Set(tv)].join(', '), preseason: seasonType === 1
+  };
+}
+
+async function fetchJson(url){
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(String(r.status));
+  return r.json();
+}
+
+async function loadGames(force){
+  const sc = state.sportsCache;
+  const fresh = sc && sc.day === todayKey() && (Date.now() - sc.fetched) < 60*60e3;
+  if (!force && fresh) { renderGames(); return; }
+  const from = startOfDay(new Date()), to = addDays(from, 7);
+  const range = `${keyOf(from).replace(/-/g,'')}-${keyOf(addDays(from, 6)).replace(/-/g,'')}`;
+  const jobs = [];
+  TEAMS.forEach(team => team.sources.forEach(src => {
+    jobs.push(fetchJson(`${ESPN}/${src.sport}/${src.league}/teams/${src.team}/schedule`).then(j => ({ j, team, src })));
+    if (src.scoreboard) jobs.push(fetchJson(`${ESPN}/${src.sport}/${src.league}/scoreboard?dates=${range}&limit=500`).then(j => ({ j, team, src })));
+  }));
+  const results = await Promise.allSettled(jobs);
+  const ok = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+  if (!ok.length) {
+    sportsError = "Couldn't reach ESPN for schedules. Tap Refresh to try again.";
+    renderGames(); return;
+  }
+  const seen = new Map();
+  ok.forEach(({ j, team, src }) => (j.events || []).forEach(ev => {
+    const g = normGame(ev, team, src);
+    if (!g) return;
+    const d = new Date(g.date);
+    if (d >= from && d < to) seen.set(g.team + g.id, Object.assign(seen.get(g.team + g.id) || {}, g, { tv: g.tv || (seen.get(g.team + g.id) || {}).tv || '' }));
+  }));
+  state.sportsCache = { day: todayKey(), fetched: Date.now(), games: [...seen.values()], partial: ok.length < results.length };
+  sportsError = null;
+  save();
+  renderGames();
+}
+
+function renderGames(){
+  const el = $('#games');
+  const sc = state.sportsCache;
+  if (!sc || sc.day !== todayKey()) {
+    el.innerHTML = sportsError ? `<p class="err">${esc(sportsError)}</p>` : '<p class="muted">Loading schedules…</p>';
+    return;
+  }
+  const games = sc.games.slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+  const byDay = new Map();
+  games.forEach(g => {
+    const k = keyOf(new Date(g.date));
+    if (!byDay.has(k)) byDay.set(k, []);
+    byDay.get(k).push(g);
+  });
+  const teamOf = k => TEAMS.find(t => t.key === k);
+  const html = [...byDay.entries()].map(([k, list]) => `<div class="day"><h3>${esc(dayHeading(parseKey(k)))}</h3>${list.map(g => {
+    const t = teamOf(g.team);
+    const vs = g.neutral ? 'vs' : (g.home ? 'vs' : 'at');
+    let right, res = '';
+    if (g.state === 'post') {
+      right = 'Final';
+      if (g.us != null && g.them != null) {
+        const w = g.winner === true || (+g.us > +g.them);
+        res = `<div class="res ${w ? 'w' : 'l'}">${w ? 'W' : 'L'} ${esc(g.us)}–${esc(g.them)}</div>`;
+      }
+    } else if (g.state === 'in') {
+      right = 'Live';
+      res = `<div class="res">${esc(g.us ?? '')}–${esc(g.them ?? '')} ${esc(g.detail)}</div>`;
+    } else {
+      right = g.tbd ? 'Time TBD' : fmtTime(new Date(g.date));
+    }
+    const meta = [g.label, g.preseason ? 'Preseason' : '', g.tv].filter(Boolean).join(', ');
+    return `<div class="game">
+      <div class="who"><i style="background:${t.color}" aria-hidden="true"></i>${esc(t.name)} ${vs} ${esc(g.opp)}</div>
+      <div class="time">${esc(right)}</div>
+      <div class="meta">${esc(meta)}</div>${res || '<div></div>'}
+    </div>`;
+  }).join('')}</div>`).join('');
+  const idle = TEAMS.filter(t => !games.some(g => g.team === t.key)).map(t => t.name);
+  const idleNote = idle.length ? `<p class="note">No games this week: ${idle.join(', ')}.</p>` : '';
+  el.innerHTML = `${html || '<p class="muted">No games in the next 7 days.</p>'}${idleNote}
+    ${sc.partial ? '<p class="note">Some schedules didn\'t load. Tap Refresh to try again.</p>' : ''}`;
+}
+
+/* ---------- Actions ---------- */
+function renderAll(){
+  $('#today-label').textContent = new Date().toLocaleDateString([], { weekday:'long', month:'long', day:'numeric' });
+  renderWeather(); renderOutfit(); renderCalendar(); renderUpcoming(); renderTodo(); renderWorkout(); renderGames();
+  renderedDay = todayKey();
+}
+
+const actions = {
+  async refresh(btn){
+    btn.setAttribute('aria-busy','true'); btn.textContent = 'Refreshing…';
+    await Promise.all([loadWeather(true), loadGames(true)]);
+    btn.removeAttribute('aria-busy'); btn.textContent = 'Refresh';
+  },
+  editZip(){ ui.editZip = true; renderZip(); },
+  cancelZip(){ ui.editZip = false; renderZip(); },
+  check(btn, id){
+    const row = btn.closest('.task');
+    const commit = () => {
+      const k = todayKey();
+      const list = state.log[k] || (state.log[k] = []);
+      if (!list.includes(id)) list.push(id);
+      save(); renderTodo();
+    };
+    if (reduceMotion()) return commit();
+    row.classList.add('gone');
+    setTimeout(commit, 320);
+  },
+  undo(_, id){
+    const k = todayKey();
+    state.log[k] = (state.log[k] || []).filter(x => x !== id);
+    save(); renderTodo();
+  },
+  toggleLog(){ ui.showLog = !ui.showLog; renderTodo(); },
+  toggleEditTasks(){ ui.editTasks = !ui.editTasks; renderTodo(); },
+  deleteTask(_, id){
+    const t = state.tasks.find(x => x.id === id);
+    if (!t || !confirm(`Remove “${t.title}” from your daily list? Its past history stays in your CSV export.`)) return;
+    t.archived = true; t.archivedOn = todayKey(); save(); renderTodo();
+  },
+  toggleDay(btn, id){
+    const t = state.tasks.find(x => x.id === id); if (!t) return;
+    const d = +btn.dataset.day;
+    t.days = t.days.includes(d) ? t.days.filter(x => x !== d) : [...t.days, d].sort();
+    save(); renderTodo();
+  },
+  toggleAddUp(){ ui.showAddUp = !ui.showAddUp; renderUpcoming(); if (ui.showAddUp) $('#upcoming input[name=title]').focus(); },
+  toggleAllUp(){ ui.showAllUp = !ui.showAllUp; renderUpcoming(); },
+  addressUp(_, id){
+    const u = state.upcoming.find(x => x.id === id); if (!u) return;
+    u.addressed = true; u.addressedOn = todayKey(); save(); renderUpcoming();
+  },
+  restoreUp(_, id){
+    const u = state.upcoming.find(x => x.id === id); if (!u) return;
+    u.addressed = false; delete u.addressedOn; save(); renderUpcoming();
+  },
+  deleteUp(_, id){
+    const u = state.upcoming.find(x => x.id === id);
+    if (!u || !confirm(`Delete “${u.title}”?`)) return;
+    state.upcoming = state.upcoming.filter(x => x.id !== id); save(); renderUpcoming();
+  },
+  toggleCalHelp(){ ui.showCalHelp = !ui.showCalHelp; renderCalendar(); },
+  async copyUrl(btn){
+    const url = location.origin + location.pathname + '#cal=';
+    try { await navigator.clipboard.writeText(url); btn.textContent = 'Copied'; }
+    catch (e) { prompt('Copy this link:', url); }
+  },
+  exportData(){
+    const { weatherCache, sportsCache, ...keep } = state;
+    download(`meatloaf-backup-${todayKey()}.json`, JSON.stringify(keep, null, 2), 'application/json');
+  },
+  exportLog(){ download(`meatloaf-history-${todayKey()}.csv`, buildCsv(), 'text/csv'); },
+  editWorkout(){ ui.editWorkout = true; ui.workoutErr = ''; ui.draftPlan = null; renderWorkout(); $('#plan-text').focus(); },
+  cancelWorkout(){ ui.editWorkout = false; ui.workoutErr = ''; ui.draftPlan = null; renderWorkout(); },
+  uploadPlan(){ $('#plan-file').click(); },
+  removeWorkout(){
+    if (!confirm('Remove your workout plan? Days you already marked done stay in your history.')) return;
+    state.workout = null; ui.editWorkout = false; save(); renderWorkout(); if (ui.showLog) renderTodo();
+  },
+  workoutDone(){
+    const d = workoutFor(new Date());
+    state.workoutLog[todayKey()] = { title: d && !d.before ? workoutTitle(d) : 'Workout' };
+    save(); renderWorkout(); if (ui.showLog) renderTodo();
+  },
+  workoutUndo(){ delete state.workoutLog[todayKey()]; save(); renderWorkout(); if (ui.showLog) renderTodo(); },
+  importData(){ $('#import-file').click(); }
+};
+
+const forms = {
+  zip(form){
+    const zip = form.elements['zip'].value.trim();
+    if (!/^\d{5}$/.test(zip)) { form.elements['zip'].setCustomValidity('Enter a 5-digit zip code'); form.elements['zip'].reportValidity(); return; }
+    state.zip = zip; ui.editZip = false; weatherError = null; save();
+    renderWeather(); renderOutfit(); loadWeather(true);
+  },
+  addTask(form){
+    const title = form.elements['title'].value.trim(); if (!title) return;
+    state.tasks.push({ id: uid(), title, days: [0,1,2,3,4,5,6], created: todayKey() });
+    save(); renderTodo(); const inp = $('#todo input[name=title]'); if (inp) inp.focus();
+  },
+  workout(form){
+    const text = form.elements['plan'].value, start = form.elements['start'].value;
+    ui.draftPlan = text;
+    try {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) throw new Error('Pick the first day of the plan.');
+      const parsed = parsePlan(text);
+      const loaded = state.workout && state.workout.loaded && state.workout.loaded < todayKey() ? state.workout.loaded : todayKey();
+      state.workout = { text, start, mode: parsed.mode, days: parsed.days, loaded };
+      ui.editWorkout = false; ui.workoutErr = ''; ui.draftPlan = null;
+      save(); renderWorkout(); if (ui.showLog) renderTodo();
+    } catch (err) { ui.workoutErr = err.message; renderWorkout(); }
+  },
+  addUp(form){
+    const title = form.elements['title'].value.trim(), date = form.elements['date'].value, note = form.elements['note'].value.trim();
+    if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    state.upcoming.push({ id: uid(), title, date, note, addressed: false });
+    ui.showAddUp = false; save(); renderUpcoming();
+  }
+};
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-action]');
+  if (!el || !actions[el.dataset.action]) return;
+  if (el.type === 'submit' && el.form) return;
+  e.preventDefault();
+  actions[el.dataset.action](el, el.dataset.id, e);
+});
+document.addEventListener('submit', e => {
+  const f = e.target.closest('[data-form]');
+  if (!f || !forms[f.dataset.form]) return;
+  e.preventDefault();
+  forms[f.dataset.form](f);
+});
+document.addEventListener('input', e => { if (e.target.setCustomValidity) e.target.setCustomValidity(''); });
+
+$('#import-file').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (!Array.isArray(data.tasks) || typeof data.log !== 'object') throw new Error('bad');
+    if (!confirm('Replace your current to-dos, log, and upcoming items with this backup?')) return;
+    state = Object.assign(defaults(), data, { weatherCache: state.weatherCache, sportsCache: state.sportsCache });
+    save(); renderAll();
+  } catch (err) {
+    alert("That file isn't a Meatloaf backup.");
+  } finally { e.target.value = ''; }
+});
+
+$('#plan-file').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  const start = $('#workout input[name=start]');
+  ui.draftPlan = await file.text(); ui.workoutErr = '';
+  const keepStart = start ? start.value : null;
+  renderWorkout();
+  if (keepStart) $('#workout input[name=start]').value = keepStart;
+  e.target.value = '';
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (renderedDay !== todayKey()) renderAll();
+  loadWeather(false); loadGames(false);
+});
+window.addEventListener('hashchange', () => { if (location.hash.startsWith('#cal=')) { importFromHash(); renderCalendar(); } });
+
+/* ---------- Start ---------- */
+if (!state.workout && EMBEDDED_PLAN.trim()) {
+  try {
+    const p = parsePlan(EMBEDDED_PLAN);
+    state.workout = { text: EMBEDDED_PLAN.trim(), start: EMBEDDED_PLAN_START || todayKey(), mode: p.mode, days: p.days, loaded: todayKey() };
+    save();
+  } catch (e) {}
+}
+importFromHash();
+renderAll();
+loadWeather(false);
+loadGames(false);
+})();
+</script>
+</body>
+</html>
