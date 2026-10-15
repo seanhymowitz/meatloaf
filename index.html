@@ -66,6 +66,22 @@ main{max-width:600px;margin:0 auto;padding:4px 16px 48px}
 .stop.collapsed .head{margin-bottom:0}
 .stop.collapsed{padding-bottom:18px}
 .xbtn{background:none;border:0;color:var(--muted);font-size:24px;line-height:1;padding:2px 6px;cursor:pointer;margin-left:auto}
+/* Reading tracker */
+.fold-row{display:flex;align-items:center;gap:4px;border-top:1px solid var(--rule)}
+.fold-name{flex:1;min-width:0;text-align:left;background:none;border:0;padding:11px 0;font:inherit;font-weight:650;font-size:17px;color:inherit;display:flex;align-items:center;gap:10px;cursor:pointer}
+.fold-name .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fold-name .cnt{color:var(--muted);font-weight:400;font-size:14px}
+.chev.sm{width:8px;height:8px;border-width:0 2px 2px 0}
+.chev.shut{transform:rotate(-45deg)}
+.fold-body{margin-left:3px;padding-left:14px;border-left:2px solid var(--rule)}
+.fold-menu{padding:2px 0 12px}
+.book .bk{flex:1;min-width:0}
+.book .bk a,.book .bk .tt{color:var(--ink);font-weight:600;font-size:16px;text-decoration:none}
+.book .bk a::after{content:" ↗";color:var(--muted);font-weight:400;font-size:13px}
+.book .by{font-size:14px;color:var(--muted)}
+.addbook{background:var(--surface);border-radius:12px;padding:12px;margin:8px 0 10px}
+.addbook .field{width:100%}
+.addbook label{font-size:13px;color:var(--muted);display:grid;gap:4px}
 .list-done{margin-top:10px;background:var(--surface);border-radius:12px;padding:6px 14px}
 .list-done .row{justify-content:space-between;padding:8px 0;border-top:1px solid var(--rule);font-size:15px}
 .list-done .row:first-child{border-top:0}
@@ -256,6 +272,12 @@ footer a{color:inherit}
       <div id="watch"></div>
     </section>
 
+    <section class="stop" style="--c:#0078c6" data-section="reading" aria-labelledby="h-reading">
+      <span class="bullet" aria-hidden="true">R</span>
+      <div class="head"><h2 id="h-reading">Reading Tracker</h2><div class="aside" id="reading-aside"></div></div>
+      <div id="reading"></div>
+    </section>
+
     <section class="stop" style="--c:var(--c-games)" data-section="games" aria-labelledby="h-games">
       <span class="bullet" aria-hidden="true">G</span>
       <div class="head"><h2 id="h-games">Games this week</h2></div>
@@ -342,6 +364,7 @@ function defaults(){
     log: {},
     upcoming: [],
     lists: { friday: [], watch: [] },
+    reading: { folders: [], books: [] },
     collapsed: {},
     calendar: null,
     workout: null,
@@ -360,7 +383,7 @@ function load(){
 let state = load();
 function save(){ try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
 
-const ui = { editZip:false, editTasks:false, showLog:false, showAllUp:false, showAddUp:false, showCalHelp:false, editWorkout:false, workoutErr:'', showDone:{} };
+const ui = { editZip:false, editTasks:false, showLog:false, showAllUp:false, showAddUp:false, showCalHelp:false, editWorkout:false, workoutErr:'', showDone:{}, rd:{ menu:null, addIn:null, newIn:undefined, renameId:null, draft:null, busy:false, undo:null } };
 let weatherError = null, sportsError = null, renderedDay = todayKey();
 
 /* ---------- Calendar import from the iOS Shortcut ---------- */
@@ -1027,6 +1050,189 @@ function renderList(key){
           </span></div>`).join('')}</div>` : ''}` : ''}`;
 }
 
+/* ---------- Reading tracker ---------- */
+function rdState(){
+  if (!state.reading) state.reading = { folders: [], books: [] };
+  return state.reading;
+}
+const rdKids = id => rdState().folders.filter(f => (f.parent || null) === id).sort((a,b) => a.name.localeCompare(b.name));
+function rdDescendants(id){
+  const out = [id];
+  rdKids(id).forEach(k => out.push(...rdDescendants(k.id)));
+  return out;
+}
+function rdCount(id){
+  const ids = new Set(rdDescendants(id));
+  return rdState().books.filter(b => ids.has(b.folder)).length;
+}
+function rdPath(id){
+  const f = rdState().folders.find(x => x.id === id);
+  if (!f) return '';
+  return f.parent ? `${rdPath(f.parent)} / ${f.name}` : f.name;
+}
+function rdFolderForm(parent){
+  return `<form data-form="rdFolder" data-parent="${parent || ''}" class="row" style="margin:8px 0 10px">
+      <input class="field" name="name" placeholder="${parent ? 'Subcategory name' : 'Category name, like Fiction'}" maxlength="60" required style="flex:1" aria-label="Category name">
+      <button class="btn solid sm" type="submit">Add</button>
+      <button class="linkbtn" type="button" data-action="rdCancel">Cancel</button>
+    </form>`;
+}
+function rdLookupForm(folder){
+  return `<form data-form="rdLookup" data-folder="${folder}" class="addbook stack">
+      <label>Amazon link
+        <textarea class="field" name="src" rows="2" required placeholder="Paste the link, or everything Amazon copies when you tap Share, then Copy"></textarea></label>
+      <div class="row">
+        <button class="btn solid sm" type="submit"${ui.rd.busy ? ' disabled' : ''}>${ui.rd.busy ? 'Looking up…' : 'Look up book'}</button>
+        <button class="linkbtn" type="button" data-action="rdManual" data-id="${folder}">Type it in instead</button>
+        <button class="linkbtn" type="button" data-action="rdCancel">Cancel</button>
+      </div>
+    </form>`;
+}
+function rdDraftForm(){
+  const d = ui.rd.draft;
+  const folderOpts = rdState().folders.map(f => ({ id: f.id, label: rdPath(f.id) }))
+    .sort((a,b) => a.label.localeCompare(b.label))
+    .map(o => `<option value="${o.id}"${o.id === d.folder ? ' selected' : ''}>${esc(o.label)}</option>`).join('');
+  return `<form data-form="rdSave" class="addbook stack">
+      ${d.note ? `<p class="${d.found ? 'note' : 'err'}" style="margin:0">${esc(d.note)}</p>` : ''}
+      <label>Title<input class="field" name="title" value="${esc(d.title)}" required maxlength="200"></label>
+      <label>Author<input class="field" name="author" value="${esc(d.author)}" maxlength="200"></label>
+      <label>Link<input class="field" name="url" value="${esc(d.url)}" inputmode="url" maxlength="2000"></label>
+      ${d.id ? `<label>Category<select class="field" name="folder">${folderOpts}</select></label>` : ''}
+      <div class="row">
+        <button class="btn solid sm" type="submit">${d.id ? 'Save changes' : 'Save book'}</button>
+        <button class="linkbtn" type="button" data-action="rdCancel">Cancel</button>
+      </div>
+    </form>`;
+}
+function rdBookHtml(b){
+  if (ui.rd.draft && ui.rd.draft.id === b.id) return rdDraftForm();
+  const safeUrl = /^https?:\/\//i.test(b.url || '') ? b.url : '';
+  const title = safeUrl
+    ? `<a href="${esc(safeUrl)}" target="_blank" rel="noopener">${esc(b.title)}</a>`
+    : `<span class="tt">${esc(b.title)}</span>`;
+  return `<div class="task book">
+      <button class="box" data-action="rdDone" data-id="${b.id}" aria-label="Mark “${esc(b.title)}” as read"></button>
+      <div class="bk">${title}${b.author ? `<div class="by">${esc(b.author)}</div>` : ''}</div>
+      <button class="linkbtn" data-action="rdEdit" data-id="${b.id}" aria-label="Edit “${esc(b.title)}”">Edit</button>
+    </div>`;
+}
+function rdFolderHtml(f){
+  const open = f.open !== false;
+  const kids = rdKids(f.id);
+  const books = rdState().books.filter(b => b.folder === f.id);
+  const n = rdCount(f.id);
+  let h = `<div class="fold">
+    <div class="fold-row">
+      <button class="fold-name" data-action="rdToggle" data-id="${f.id}" aria-expanded="${open}">
+        <span class="chev sm${open ? '' : ' shut'}" aria-hidden="true"></span><span class="nm">${esc(f.name)}</span>${n ? `<span class="cnt">${n}</span>` : ''}
+      </button>
+      <button class="xbtn" data-action="rdMenu" data-id="${f.id}" aria-label="Options for ${esc(f.name)}" aria-expanded="${ui.rd.menu === f.id}">⋯</button>
+    </div>`;
+  if (ui.rd.menu === f.id) h += `<div class="row fold-menu">
+      <button class="btn sm" data-action="rdAddBook" data-id="${f.id}">Add book</button>
+      <button class="btn sm" data-action="rdNewFolder" data-id="${f.id}">Add subcategory</button>
+      <button class="linkbtn" data-action="rdRename" data-id="${f.id}">Rename</button>
+      <button class="linkbtn" data-action="rdDeleteFolder" data-id="${f.id}">Delete</button>
+    </div>`;
+  if (ui.rd.renameId === f.id) h += `<form data-form="rdRename" data-id="${f.id}" class="row" style="margin:4px 0 10px">
+      <input class="field" name="name" value="${esc(f.name)}" maxlength="60" required style="flex:1" aria-label="New name">
+      <button class="btn solid sm" type="submit">Save</button>
+      <button class="linkbtn" type="button" data-action="rdCancel">Cancel</button>
+    </form>`;
+  if (open) {
+    let body = '';
+    if (ui.rd.addIn === f.id) body += ui.rd.draft && !ui.rd.draft.id ? rdDraftForm() : rdLookupForm(f.id);
+    body += books.map(rdBookHtml).join('');
+    body += kids.map(rdFolderHtml).join('');
+    if (ui.rd.newIn === f.id) body += rdFolderForm(f.id);
+    if (!body) body = `<p class="note" style="margin:2px 0 10px">Empty. Tap ⋯ to add a book or a subcategory.</p>`;
+    h += `<div class="fold-body">${body}</div>`;
+  }
+  return h + '</div>';
+}
+function renderReading(){
+  const el = $('#reading'), aside = $('#reading-aside');
+  const R = rdState();
+  aside.textContent = R.books.length ? `${R.books.length} book${R.books.length === 1 ? '' : 's'}` : '';
+  const roots = rdKids(null);
+  let html = '';
+  if (ui.rd.undo) html += `<p class="note" style="margin:0 0 8px">Checked off “${esc(ui.rd.undo.book.title)}”. <button class="linkbtn" data-action="rdUndo">Undo</button></p>`;
+  if (!roots.length && ui.rd.newIn !== null) html += `<p class="muted">Start with a category, like Fiction or Business. Categories can hold books and other categories.</p>`;
+  html += roots.map(rdFolderHtml).join('');
+  html += ui.rd.newIn === null ? rdFolderForm(null)
+    : `<button class="btn sm" style="margin-top:12px" data-action="rdNewFolder">New category</button>`;
+  el.innerHTML = html;
+}
+function rdReset(){ Object.assign(ui.rd, { menu:null, addIn:null, newIn:undefined, renameId:null, draft:null, busy:false }); }
+
+/* Book lookup: reads the ISBN or title from what was pasted, then asks Open Library, then Google Books. */
+async function getJSON(url, ms){
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), ms || 8000);
+  try {
+    const r = await fetch(url, { signal: c.signal });
+    if (!r.ok) throw new Error(String(r.status));
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+function parseAmazon(text){
+  const urlM = text.match(/https?:\/\/[^\s<>"]+/i);
+  const url = urlM ? urlM[0].replace(/[).,;\]]+$/, '') : '';
+  let rest = (urlM ? text.replace(urlM[0], ' ') : text).replace(/\s+/g, ' ').trim();
+  let isbn = null, slug = '', author = '';
+  const isbnInText = rest.match(/\b(97[89]\d{10}|\d{9}[\dX])\b/);
+  if (isbnInText) isbn = isbnInText[1];
+  if (url) {
+    try {
+      const u = new URL(url);
+      const m = u.pathname.match(/\/(?:dp|gp\/product|gp\/aw\/d|exec\/obidos\/ASIN|product)\/([A-Z0-9]{10})(?:[/?]|$)/i);
+      if (m && !isbn && /^\d{9}[\dX]$/i.test(m[1])) isbn = m[1].toUpperCase();
+      const sm = u.pathname.match(/^\/([^/]+)\/(?:dp|gp)\//);
+      if (sm) slug = decodeURIComponent(sm[1]).replace(/[-_]+/g, ' ').trim();
+    } catch (e) {}
+  }
+  // Amazon page titles look like "Title: Last, First: 9780000000000: Amazon.com: Books"
+  const parts = rest.split(/\s*:\s+/).map(x => x.trim()).filter(Boolean);
+  const amzIdx = parts.findIndex(x => /^amazon\.[a-z.]+$/i.test(x));
+  if (amzIdx > 0) {
+    const before = parts.slice(0, amzIdx).filter(x => !/^(97[89]\d{10}|\d{9}[\dX])$/.test(x));
+    if (before.length >= 2 && /^[^,]+,\s*[^,]+$/.test(before[before.length - 1])) {
+      const [last, first] = before.pop().split(/,\s*/);
+      author = `${first} ${last}`;
+    }
+    rest = before.join(': ');
+  }
+  rest = rest.replace(/^amazon\.[a-z.]+\s*:\s*/i, '').replace(/check out this (item|book)( on amazon)?:?/ig, '')
+             .replace(/\b(paperback|hardcover|kindle edition|audible audiobook)\b.*$/i, '').trim();
+  return { url, isbn, title: rest || slug, author };
+}
+async function lookupBook(text){
+  const p = parseAmazon(text);
+  const out = { url: p.url, title: p.title, author: p.author, found: false };
+  const tidy = q => q.split(/\s[:(\[]|\s[–—-]\s/)[0].trim();
+  const queries = [];
+  if (p.isbn) queries.push(`isbn:${p.isbn}`);
+  if (p.title) {
+    queries.push(p.title + (p.author ? ' ' + p.author : ''));
+    const short = tidy(p.title);
+    if (short && short !== p.title) queries.push(short);
+  }
+  for (const q of queries) {
+    try {
+      const j = await getJSON(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&fields=title,author_name&limit=1`);
+      const d = j.docs && j.docs[0];
+      if (d && d.title) return Object.assign(out, { title: d.title, author: (d.author_name || []).slice(0, 2).join(', ') || out.author, found: true, source: 'Open Library' });
+    } catch (e) {}
+    try {
+      const j = await getJSON(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=1&printType=books`);
+      const v = j.items && j.items[0] && j.items[0].volumeInfo;
+      if (v && v.title) return Object.assign(out, { title: v.title, author: (v.authors || []).slice(0, 2).join(', ') || out.author, found: true, source: 'Google Books' });
+    } catch (e) {}
+  }
+  return out;
+}
+
 /* ---------- Collapsible sections ---------- */
 function setupCollapse(){
   document.querySelectorAll('.stop[data-section]').forEach(sec => {
@@ -1161,7 +1367,7 @@ function renderGames(){
 /* ---------- Actions ---------- */
 function renderAll(){
   $('#today-label').textContent = new Date().toLocaleDateString([], { weekday:'long', month:'long', day:'numeric' });
-  renderWeather(); renderOutfit(); renderCalendar(); renderUpcoming(); renderTodo(); renderWorkout(); renderList('friday'); renderList('watch'); renderGames();
+  renderWeather(); renderOutfit(); renderCalendar(); renderUpcoming(); renderTodo(); renderWorkout(); renderList('friday'); renderList('watch'); renderReading(); renderGames();
   renderedDay = todayKey();
 }
 
@@ -1178,6 +1384,63 @@ const actions = {
     save();
     const sec = document.querySelector(`.stop[data-section="${id}"]`);
     if (sec) applyCollapse(sec);
+  },
+  rdNewFolder(_, id){
+    rdReset(); ui.rd.newIn = id || null;
+    if (id) { const f = rdState().folders.find(x => x.id === id); if (f) f.open = true; }
+    renderReading();
+    const inp = $('#reading form[data-form=rdFolder] input'); if (inp) inp.focus();
+  },
+  rdToggle(_, id){
+    const f = rdState().folders.find(x => x.id === id); if (!f) return;
+    f.open = f.open === false; save(); renderReading();
+  },
+  rdMenu(_, id){ const was = ui.rd.menu === id; rdReset(); ui.rd.menu = was ? null : id; renderReading(); },
+  rdAddBook(_, id){
+    rdReset(); ui.rd.addIn = id;
+    const f = rdState().folders.find(x => x.id === id); if (f) f.open = true;
+    renderReading();
+    const ta = $('#reading textarea[name=src]'); if (ta) ta.focus();
+  },
+  rdManual(_, id){
+    ui.rd.addIn = id; ui.rd.draft = { folder: id, title: '', author: '', url: '', note: '', found: false };
+    renderReading(); const t = $('#reading input[name=title]'); if (t) t.focus();
+  },
+  rdRename(_, id){ rdReset(); ui.rd.renameId = id; renderReading(); const i = $('#reading form[data-form=rdRename] input'); if (i) { i.focus(); i.select(); } },
+  rdDeleteFolder(_, id){
+    const R = rdState(), f = R.folders.find(x => x.id === id); if (!f) return;
+    const ids = new Set(rdDescendants(id));
+    const books = R.books.filter(b => ids.has(b.folder)).length, subs = ids.size - 1;
+    const extra = [books ? `${books} book${books === 1 ? '' : 's'}` : '', subs ? `${subs} subcategor${subs === 1 ? 'y' : 'ies'}` : ''].filter(Boolean).join(' and ');
+    if (!confirm(`Delete “${f.name}”${extra ? ` and the ${extra} inside it` : ''}?`)) return;
+    R.folders = R.folders.filter(x => !ids.has(x.id));
+    R.books = R.books.filter(b => !ids.has(b.folder));
+    rdReset(); save(); renderReading();
+  },
+  rdEdit(_, id){
+    const b = rdState().books.find(x => x.id === id); if (!b) return;
+    rdReset(); ui.rd.draft = { id: b.id, folder: b.folder, title: b.title, author: b.author || '', url: b.url || '', note: '', found: true };
+    renderReading();
+  },
+  rdCancel(){ rdReset(); renderReading(); },
+  rdDone(btn, id){
+    const R = rdState(), row = btn.closest('.task');
+    const commit = () => {
+      const idx = R.books.findIndex(x => x.id === id); if (idx < 0) return;
+      const [book] = R.books.splice(idx, 1);
+      if (ui.rd.undo) clearTimeout(ui.rd.undo.timer);
+      ui.rd.undo = { book, index: idx, timer: setTimeout(() => { ui.rd.undo = null; renderReading(); }, 8000) };
+      save(); renderReading();
+    };
+    if (reduceMotion()) return commit();
+    row.classList.add('gone'); setTimeout(commit, 320);
+  },
+  rdUndo(){
+    const u = ui.rd.undo; if (!u) return;
+    clearTimeout(u.timer);
+    const R = rdState();
+    if (R.folders.some(f => f.id === u.book.folder)) R.books.splice(Math.min(u.index, R.books.length), 0, u.book);
+    ui.rd.undo = null; save(); renderReading();
   },
   listCheck(btn, id){
     const key = btn.dataset.list, row = btn.closest('.task');
@@ -1285,6 +1548,44 @@ const forms = {
     if (!/^\d{5}$/.test(zip)) { form.elements['zip'].setCustomValidity('Enter a 5-digit zip code'); form.elements['zip'].reportValidity(); return; }
     state.zip = zip; ui.editZip = false; weatherError = null; save();
     renderWeather(); renderOutfit(); loadWeather(true);
+  },
+  rdFolder(form){
+    const name = form.elements['name'].value.trim(); if (!name) return;
+    const parent = form.dataset.parent || null;
+    rdState().folders.push({ id: uid(), name, parent, open: true });
+    rdReset(); save(); renderReading();
+  },
+  rdRename(form){
+    const f = rdState().folders.find(x => x.id === form.dataset.id), name = form.elements['name'].value.trim();
+    if (f && name) f.name = name;
+    rdReset(); save(); renderReading();
+  },
+  async rdLookup(form){
+    const src = form.elements['src'].value.trim(); if (!src || ui.rd.busy) return;
+    const folder = form.dataset.folder;
+    ui.rd.busy = true; renderReading();
+    let r;
+    try { r = await lookupBook(src); } catch (e) { r = { url: '', title: '', author: '', found: false }; }
+    ui.rd.busy = false;
+    ui.rd.draft = { folder, title: r.title || '', author: r.author || '', url: r.url || '', found: r.found,
+      note: r.found ? `Found on ${r.source}. Check it's right, then save.`
+        : r.title ? "Couldn't confirm this book online. Check the title, add the author, then save."
+        : "This link doesn't include the book's details. Type the title and author." };
+    renderReading();
+    const t = $('#reading input[name=title]'); if (t && !r.title) t.focus();
+  },
+  rdSave(form){
+    const d = ui.rd.draft; if (!d) return;
+    const title = form.elements['title'].value.trim(); if (!title) return;
+    const author = form.elements['author'].value.trim(), url = form.elements['url'].value.trim();
+    const R = rdState();
+    if (d.id) {
+      const b = R.books.find(x => x.id === d.id);
+      if (b) Object.assign(b, { title, author, url, folder: form.elements['folder'] ? form.elements['folder'].value : b.folder });
+    } else {
+      R.books.push({ id: uid(), title, author, url, folder: d.folder, added: todayKey() });
+    }
+    rdReset(); save(); renderReading();
   },
   listAdd(form){
     const key = form.dataset.list, title = form.elements['title'].value.trim();
