@@ -249,20 +249,20 @@ footer a{color:inherit}
     </section>
 
     <section class="stop" style="--c:var(--c-todo)" data-section="todo" aria-labelledby="h-todo">
-      <span class="bullet" aria-hidden="true">T</span>
-      <div class="head"><h2 id="h-todo">To-do</h2><div class="aside" id="todo-aside"></div></div>
+      <span class="bullet" aria-hidden="true">D</span>
+      <div class="head"><h2 id="h-todo">Daily</h2><div class="aside" id="todo-aside"></div></div>
       <div id="todo"></div>
     </section>
 
     <section class="stop" style="--c:#996633" data-section="workout" aria-labelledby="h-workout">
-      <span class="bullet" aria-hidden="true">E</span>
+      <span class="bullet" aria-hidden="true">F</span>
       <div class="head"><h2 id="h-workout">Workout</h2><div class="aside" id="workout-aside"></div></div>
       <div id="workout"></div>
     </section>
 
     <section class="stop" style="--c:#6cbe45" data-section="friday" aria-labelledby="h-friday">
-      <span class="bullet" aria-hidden="true">F</span>
-      <div class="head"><h2 id="h-friday">Friday</h2><div class="aside" id="friday-aside"></div></div>
+      <span class="bullet" aria-hidden="true">T</span>
+      <div class="head"><h2 id="h-friday">To Do</h2><div class="aside" id="friday-aside"></div></div>
       <div id="friday"></div>
     </section>
 
@@ -383,7 +383,7 @@ function load(){
 let state = load();
 function save(){ try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
 
-const ui = { editZip:false, editTasks:false, showLog:false, showAllUp:false, showAddUp:false, showCalHelp:false, editWorkout:false, workoutErr:'', showDone:{}, rd:{ menu:null, addIn:null, newIn:undefined, renameId:null, draft:null, busy:false, undo:null } };
+const ui = { editZip:false, editTasks:false, showLog:false, showAllUp:false, showAddUp:false, showCalHelp:false, editWorkout:false, workoutErr:'', showDone:{}, td:{ menu:null, newIn:undefined, addIn:null, renameId:null }, rd:{ menu:null, addIn:null, newIn:undefined, renameId:null, draft:null, busy:false, undo:null } };
 let weatherError = null, sportsError = null, renderedDay = todayKey();
 
 /* ---------- Calendar import from the iOS Shortcut ---------- */
@@ -1011,9 +1011,9 @@ function buildCsv(){
   return rows.map(r => r.map(c => /[",\n]/.test(c) ? `"${String(c).replace(/"/g, '""')}"` : c).join(',')).join('\n');
 }
 
-/* ---------- Standalone lists (Friday, Watch) ---------- */
+/* ---------- Standalone lists (To Do, Watch). To Do keeps its original storage key, 'friday'. ---------- */
 const LISTS = {
-  friday: { placeholder: 'Add something for Friday', doneWord: 'Done', empty: 'Nothing on the Friday list.' },
+  friday: { placeholder: 'Add a to-do', doneWord: 'Done', empty: 'Nothing on your to-do list.' },
   watch:  { placeholder: 'Add a show or movie', doneWord: 'Watched', empty: 'Nothing on the watch list.' }
 };
 function listItems(key){
@@ -1021,6 +1021,7 @@ function listItems(key){
   return state.lists[key] || (state.lists[key] = []);
 }
 function renderList(key){
+  if (key === 'friday') return renderTodoTree();
   const cfg = LISTS[key];
   const el = document.getElementById(key), aside = document.getElementById(key + '-aside');
   const items = listItems(key);
@@ -1048,6 +1049,106 @@ function renderList(key){
             <button class="linkbtn" data-action="listUndo" data-list="${key}" data-id="${i.id}">Undo</button>
             <button class="linkbtn" data-action="listDelete" data-list="${key}" data-id="${i.id}">Delete</button>
           </span></div>`).join('')}</div>` : ''}` : ''}`;
+}
+
+/* ---------- To Do tree (categories inside categories) ---------- */
+function tdFolders(){
+  if (!state.listFolders) state.listFolders = {};
+  return state.listFolders.friday || (state.listFolders.friday = []);
+}
+const tdKids = id => tdFolders().filter(f => (f.parent || null) === id).sort((a,b) => a.name.localeCompare(b.name));
+function tdDescendants(id){ const out = [id]; tdKids(id).forEach(k => out.push(...tdDescendants(k.id))); return out; }
+function tdOpenCount(id){
+  const ids = new Set(tdDescendants(id));
+  return listItems('friday').filter(i => !i.done && ids.has(i.folder)).length;
+}
+function tdPath(id){
+  const f = tdFolders().find(x => x.id === id);
+  return !f ? '' : f.parent ? `${tdPath(f.parent)} / ${f.name}` : f.name;
+}
+function tdReset(){ Object.assign(ui.td, { menu:null, newIn:undefined, addIn:null, renameId:null }); }
+function tdItemHtml(i){
+  return `<div class="task">
+      <button class="box" data-action="listCheck" data-list="friday" data-id="${i.id}" aria-label="Mark “${esc(i.title)}” done"></button>
+      <span class="label" style="flex:1;min-width:0">${esc(i.title)}</span>
+      <button class="xbtn" data-action="listDelete" data-list="friday" data-id="${i.id}" aria-label="Delete “${esc(i.title)}”">×</button>
+    </div>`;
+}
+function tdAddForm(folder, placeholder){
+  return `<form data-form="listAdd" data-list="friday" data-folder="${folder || ''}" class="row" style="margin:8px 0 10px">
+      <input class="field" name="title" placeholder="${placeholder}" required maxlength="140" style="flex:1" aria-label="${placeholder}">
+      <button class="btn solid sm" type="submit">Add</button>
+      ${folder ? '<button class="linkbtn" type="button" data-action="tdCancel">Cancel</button>' : ''}
+    </form>`;
+}
+function tdFolderForm(parent){
+  return `<form data-form="tdFolder" data-parent="${parent || ''}" class="row" style="margin:8px 0 10px">
+      <input class="field" name="name" placeholder="${parent ? 'Subcategory name' : 'Category name, like Home or Work'}" maxlength="60" required style="flex:1" aria-label="Category name">
+      <button class="btn solid sm" type="submit">Add</button>
+      <button class="linkbtn" type="button" data-action="tdCancel">Cancel</button>
+    </form>`;
+}
+function tdFolderHtml(f){
+  const open = f.open !== false, n = tdOpenCount(f.id);
+  const items = listItems('friday').filter(i => !i.done && i.folder === f.id);
+  let h = `<div class="fold">
+    <div class="fold-row">
+      <button class="fold-name" data-action="tdToggle" data-id="${f.id}" aria-expanded="${open}">
+        <span class="chev sm${open ? '' : ' shut'}" aria-hidden="true"></span><span class="nm">${esc(f.name)}</span>${n ? `<span class="cnt">${n}</span>` : ''}
+      </button>
+      <button class="xbtn" data-action="tdMenu" data-id="${f.id}" aria-label="Options for ${esc(f.name)}" aria-expanded="${ui.td.menu === f.id}">⋯</button>
+    </div>`;
+  if (ui.td.menu === f.id) h += `<div class="row fold-menu">
+      <button class="btn sm" data-action="tdAdd" data-id="${f.id}">Add to-do</button>
+      <button class="btn sm" data-action="tdNewFolder" data-id="${f.id}">Add subcategory</button>
+      <button class="linkbtn" data-action="tdRename" data-id="${f.id}">Rename</button>
+      <button class="linkbtn" data-action="tdDeleteFolder" data-id="${f.id}">Delete</button>
+    </div>`;
+  if (ui.td.renameId === f.id) h += `<form data-form="tdRename" data-id="${f.id}" class="row" style="margin:4px 0 10px">
+      <input class="field" name="name" value="${esc(f.name)}" maxlength="60" required style="flex:1" aria-label="New name">
+      <button class="btn solid sm" type="submit">Save</button>
+      <button class="linkbtn" type="button" data-action="tdCancel">Cancel</button>
+    </form>`;
+  if (open) {
+    let body = items.map(tdItemHtml).join('');
+    if (ui.td.addIn === f.id) body += tdAddForm(f.id, `Add to ${f.name}`);
+    body += tdKids(f.id).map(tdFolderHtml).join('');
+    if (ui.td.newIn === f.id) body += tdFolderForm(f.id);
+    if (!body) body = `<p class="note" style="margin:2px 0 10px">Empty. Tap ⋯ to add a to-do or a subcategory.</p>`;
+    h += `<div class="fold-body">${body}</div>`;
+  }
+  return h + '</div>';
+}
+function renderTodoTree(){
+  const el = document.getElementById('friday'), aside = document.getElementById('friday-aside');
+  const items = listItems('friday');
+  const known = new Set(tdFolders().map(f => f.id));
+  items.forEach(i => { if (i.folder && !known.has(i.folder)) i.folder = null; });
+  const open = items.filter(i => !i.done);
+  const done = items.filter(i => i.done).sort((a,b) => (b.doneAt || 0) - (a.doneAt || 0));
+  aside.textContent = open.length ? `${open.length} to go` : '';
+  const loose = open.filter(i => !i.folder);
+  const roots = tdKids(null);
+  const showDone = ui.showDone.friday;
+  let html = loose.map(tdItemHtml).join('');
+  html += roots.map(tdFolderHtml).join('');
+  if (!loose.length && !roots.length) html += `<p class="muted">Nothing on your to-do list.</p>`;
+  html += tdAddForm(null, 'Add a to-do');
+  html += ui.td.newIn === null ? tdFolderForm(null)
+    : `<button class="linkbtn" data-action="tdNewFolder">New category</button>`;
+  if (done.length) {
+    html += `<div class="row" style="margin-top:10px">
+        <button class="linkbtn" data-action="listToggleDone" data-list="friday">${showDone ? 'Hide' : 'Show'} done (${done.length})</button>
+        ${showDone ? '<button class="linkbtn" data-action="listClearDone" data-list="friday">Clear all</button>' : ''}
+      </div>`;
+    if (showDone) html += `<div class="list-done">${done.map(i => `<div class="row">
+        <span><span class="t">${esc(i.title)}</span>${i.folder ? ` <span class="small muted">in ${esc(tdPath(i.folder))}</span>` : ''}</span>
+        <span class="row" style="padding:0;border:0;gap:12px">
+          <button class="linkbtn" data-action="listUndo" data-list="friday" data-id="${i.id}">Undo</button>
+          <button class="linkbtn" data-action="listDelete" data-list="friday" data-id="${i.id}">Delete</button>
+        </span></div>`).join('')}</div>`;
+  }
+  el.innerHTML = html;
 }
 
 /* ---------- Reading tracker ---------- */
@@ -1442,6 +1543,38 @@ const actions = {
     if (R.folders.some(f => f.id === u.book.folder)) R.books.splice(Math.min(u.index, R.books.length), 0, u.book);
     ui.rd.undo = null; save(); renderReading();
   },
+  tdToggle(_, id){
+    const f = tdFolders().find(x => x.id === id); if (!f) return;
+    f.open = f.open === false; save(); renderTodoTree();
+  },
+  tdMenu(_, id){ const was = ui.td.menu === id; tdReset(); ui.td.menu = was ? null : id; renderTodoTree(); },
+  tdAdd(_, id){
+    tdReset(); ui.td.addIn = id;
+    const f = tdFolders().find(x => x.id === id); if (f) f.open = true;
+    renderTodoTree();
+    const i = document.querySelector(`#friday form[data-form=listAdd][data-folder="${id}"] input`); if (i) i.focus();
+  },
+  tdNewFolder(_, id){
+    tdReset(); ui.td.newIn = id || null;
+    if (id) { const f = tdFolders().find(x => x.id === id); if (f) f.open = true; }
+    renderTodoTree();
+    const i = document.querySelector('#friday form[data-form=tdFolder] input'); if (i) i.focus();
+  },
+  tdRename(_, id){
+    tdReset(); ui.td.renameId = id; renderTodoTree();
+    const i = document.querySelector('#friday form[data-form=tdRename] input'); if (i) { i.focus(); i.select(); }
+  },
+  tdDeleteFolder(_, id){
+    const f = tdFolders().find(x => x.id === id); if (!f) return;
+    const ids = new Set(tdDescendants(id));
+    const n = listItems('friday').filter(i => !i.done && ids.has(i.folder)).length, subs = ids.size - 1;
+    const extra = [n ? `${n} to-do${n === 1 ? '' : 's'}` : '', subs ? `${subs} subcategor${subs === 1 ? 'y' : 'ies'}` : ''].filter(Boolean).join(' and ');
+    if (!confirm(`Delete “${f.name}”${extra ? ` and the ${extra} inside it` : ''}?`)) return;
+    state.listFolders.friday = tdFolders().filter(x => !ids.has(x.id));
+    state.lists.friday = listItems('friday').filter(i => !(ids.has(i.folder) && !i.done));
+    tdReset(); save(); renderTodoTree();
+  },
+  tdCancel(){ tdReset(); renderTodoTree(); },
   listCheck(btn, id){
     const key = btn.dataset.list, row = btn.closest('.task');
     const commit = () => {
@@ -1455,7 +1588,11 @@ const actions = {
   },
   listUndo(btn, id){
     const key = btn.dataset.list, it = listItems(key).find(x => x.id === id);
-    if (it) { it.done = false; delete it.doneAt; save(); }
+    if (it) {
+      it.done = false; delete it.doneAt;
+      if (key === 'friday' && it.folder && !tdFolders().some(f => f.id === it.folder)) it.folder = null;
+      save();
+    }
     renderList(key);
   },
   listDelete(btn, id){
@@ -1587,12 +1724,25 @@ const forms = {
     }
     rdReset(); save(); renderReading();
   },
+  tdFolder(form){
+    const name = form.elements['name'].value.trim(); if (!name) return;
+    tdFolders().push({ id: uid(), name, parent: form.dataset.parent || null, open: true });
+    tdReset(); save(); renderTodoTree();
+  },
+  tdRename(form){
+    const f = tdFolders().find(x => x.id === form.dataset.id), name = form.elements['name'].value.trim();
+    if (f && name) f.name = name;
+    tdReset(); save(); renderTodoTree();
+  },
   listAdd(form){
     const key = form.dataset.list, title = form.elements['title'].value.trim();
     if (!title || !LISTS[key]) return;
-    listItems(key).push({ id: uid(), title, done: false, created: todayKey() });
+    const folder = form.dataset.folder || null;
+    listItems(key).push({ id: uid(), title, done: false, created: todayKey(), folder });
     save(); renderList(key);
-    const inp = document.querySelector(`#${key} input[name=title]`); if (inp) inp.focus();
+    const inp = document.querySelector(`#${key} form[data-form=listAdd][data-folder="${folder || ''}"] input[name=title]`)
+      || document.querySelector(`#${key} input[name=title]`);
+    if (inp) inp.focus();
   },
   addTask(form){
     const title = form.elements['title'].value.trim(); if (!title) return;
