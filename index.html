@@ -82,6 +82,25 @@ main{max-width:600px;margin:0 auto;padding:4px 16px 48px}
 .addbook{background:var(--surface);border-radius:12px;padding:12px;margin:8px 0 10px}
 .addbook .field{width:100%}
 .addbook label{font-size:13px;color:var(--muted);display:grid;gap:4px}
+/* Counter */
+.ctr{display:grid;grid-template-columns:auto 1fr auto;gap:4px 14px;align-items:center;padding:12px 0;border-top:1px solid var(--rule)}
+.ctr:first-child{border-top:0}
+.ctr-n{font-size:34px;font-weight:800;font-stretch:115%;line-height:1;min-width:58px;text-align:right;font-variant-numeric:tabular-nums}
+.ctr-n small{display:block;font-size:12px;font-weight:600;color:var(--muted);font-stretch:100%;margin-top:4px}
+.ctr .title{font-weight:650;font-size:17px}
+.ctr .when{font-size:14px;color:var(--muted)}
+.ctr .acts{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+
+/* Subscriptions */
+.subtot{display:flex;gap:6px 18px;flex-wrap:wrap;align-items:baseline;margin:0 0 6px}
+.subtot b{font-size:26px;font-weight:800;font-stretch:112%;font-variant-numeric:tabular-nums}
+.subtot span{color:var(--muted);font-size:14px}
+.sub-price{font-weight:700;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sub-price small{display:block;font-weight:400;color:var(--muted);font-size:13px}
+.checkrow{display:flex;align-items:center;gap:10px;font-size:15px;cursor:pointer}
+.checkrow input{width:22px;height:22px;accent-color:var(--ink);margin:0}
+.addform label.lbl{font-size:13px;color:var(--muted);display:grid;gap:4px}
+.addform [hidden]{display:none}
 .list-done{margin-top:10px;background:var(--surface);border-radius:12px;padding:6px 14px}
 .list-done .row{justify-content:space-between;padding:8px 0;border-top:1px solid var(--rule);font-size:15px}
 .list-done .row:first-child{border-top:0}
@@ -195,12 +214,6 @@ form{margin:0}
 .game .res{font-size:13px;text-align:right}
 .res.w{color:var(--good);font-weight:700}.res.l{color:var(--bad);font-weight:700}
 
-/* Workout */
-.wlist{margin:0 0 12px;padding:0;list-style:none}
-.wlist li{padding:8px 0;border-top:1px solid var(--rule)}
-.wlist li:first-child{border-top:0}
-.plan{width:100%;min-height:200px;resize:vertical;font-size:15px;line-height:1.4}
-.wdone{display:flex;align-items:center;gap:10px;font-weight:650;color:var(--good);margin:0 0 4px}
 
 footer{margin-top:28px;font-size:13px;color:var(--muted);display:grid;gap:10px}
 footer a{color:inherit}
@@ -254,12 +267,6 @@ footer a{color:inherit}
       <div id="todo"></div>
     </section>
 
-    <section class="stop" style="--c:#996633" data-section="workout" aria-labelledby="h-workout">
-      <span class="bullet" aria-hidden="true">F</span>
-      <div class="head"><h2 id="h-workout">Workout</h2><div class="aside" id="workout-aside"></div></div>
-      <div id="workout"></div>
-    </section>
-
     <section class="stop" style="--c:#6cbe45" data-section="friday" aria-labelledby="h-friday">
       <span class="bullet" aria-hidden="true">T</span>
       <div class="head"><h2 id="h-friday">To Do</h2><div class="aside" id="friday-aside"></div></div>
@@ -278,6 +285,18 @@ footer a{color:inherit}
       <div id="reading"></div>
     </section>
 
+    <section class="stop" style="--c:#00add0" data-section="counter" aria-labelledby="h-counter">
+      <span class="bullet" aria-hidden="true">#</span>
+      <div class="head"><h2 id="h-counter">Counter</h2></div>
+      <div id="counter"></div>
+    </section>
+
+    <section class="stop" style="--c:#a2662b" data-section="subs" aria-labelledby="h-subs">
+      <span class="bullet" aria-hidden="true">$</span>
+      <div class="head"><h2 id="h-subs">Subscriptions</h2><div class="aside" id="subs-aside"></div></div>
+      <div id="subs"></div>
+    </section>
+
     <section class="stop" style="--c:var(--c-games)" data-section="games" aria-labelledby="h-games">
       <span class="bullet" aria-hidden="true">G</span>
       <div class="head"><h2 id="h-games">Games this week</h2></div>
@@ -291,7 +310,6 @@ footer a{color:inherit}
       <button class="btn sm" data-action="importData">Restore backup</button>
       <button class="btn sm" data-action="exportLog">Export history (CSV)</button>
       <input type="file" id="import-file" accept="application/json,.json" hidden>
-      <input type="file" id="plan-file" accept=".txt,.md,text/plain" hidden>
     </div>
     <p>Your to-dos, log, and upcoming items are saved in this browser on this phone. Back up now and then.</p>
     <p>Forecast from Open-Meteo. Schedules from ESPN.</p>
@@ -309,9 +327,6 @@ const KNOWN_COORDS = { '10075': { lat: 40.7736, lon: -73.9566, place: 'New York,
 const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const OFFICE_DAYS = [2,3,4]; // Tue, Wed, Thu
 
-/* Paste a workout plan between the backticks to preload it (see the Workout section for the format). */
-const EMBEDDED_PLAN = ``;
-const EMBEDDED_PLAN_START = ''; // YYYY-MM-DD, the day Week 1 / Day 1 begins
 
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2,'0');
@@ -365,10 +380,10 @@ function defaults(){
     upcoming: [],
     lists: { friday: [], watch: [] },
     reading: { folders: [], books: [] },
+    counters: [],
+    subs: [],
     collapsed: {},
     calendar: null,
-    workout: null,
-    workoutLog: {},
     weatherCache: null,
     sportsCache: null
   };
@@ -381,9 +396,10 @@ function load(){
   return defaults();
 }
 let state = load();
+delete state.workout; delete state.workoutLog;
 function save(){ try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
 
-const ui = { editZip:false, editTasks:false, showLog:false, showAllUp:false, showAddUp:false, showCalHelp:false, editWorkout:false, workoutErr:'', showDone:{}, td:{ menu:null, newIn:undefined, addIn:null, renameId:null }, rd:{ menu:null, addIn:null, newIn:undefined, renameId:null, draft:null, busy:false, undo:null } };
+const ui = { editZip:false, editTasks:false, showLog:false, showAllUp:false, showAddUp:false, showCalHelp:false, showDone:{}, ctr:{ adding:false, edit:null }, sub:{ adding:false, edit:null }, td:{ menu:null, newIn:undefined, addIn:null, renameId:null }, rd:{ menu:null, addIn:null, newIn:undefined, renameId:null, draft:null, busy:false, undo:null } };
 let weatherError = null, sportsError = null, renderedDay = todayKey();
 
 /* ---------- Calendar import from the iOS Shortcut ---------- */
@@ -836,7 +852,7 @@ function renderTodo(){
 }
 function renderLog(){
   const live = state.tasks.filter(t => !t.archived);
-  if (!live.length && !state.workout) return '<p class="note">Add a task to start the log.</p>';
+  if (!live.length) return '<p class="note">Add a task to start the log.</p>';
   const days = [];
   for (let i = 13; i >= 0; i--) days.push(addDays(new Date(), -i));
   const head = `<tr><th class="name">Last 14 days</th>${days.map(d =>
@@ -846,142 +862,10 @@ function renderLog(){
     const st = statusFor(t, keyOf(d));
     return `<td><span class="cell ${st}" title="${fmtDay(d)}: ${label(st)}" aria-label="${fmtDay(d)}: ${label(st)}"></span></td>`;
   }).join('')}<td class="rate">${rate30(t)}</td></tr>`).join('');
-  if (state.workout) rows += `<tr><td class="name">Workout</td>${days.map(d => {
-    const st = workoutStatus(keyOf(d));
-    return `<td><span class="cell ${st}" title="${fmtDay(d)}: ${label(st)}" aria-label="${fmtDay(d)}: ${label(st)}"></span></td>`;
-  }).join('')}<td class="rate">${workoutRate30()}</td></tr>`;
   return `<div class="logwrap"><table class="log">${head}${rows}</table>
     <div class="legend"><span><i class="cell done"></i>Done</span><span><i class="cell miss"></i>Missed</span>
     <span><i class="cell pending"></i>Today, not yet</span><span><i class="cell off"></i>Not scheduled</span></div>
     <button class="btn sm" style="margin-top:12px" data-action="exportLog">Export history (CSV)</button></div>`;
-}
-
-/* ---------- Workout ---------- */
-const WD = { sun:0, sunday:0, mon:1, monday:1, tue:2, tues:2, tuesday:2, wed:3, wednesday:3,
-             thu:4, thur:4, thurs:4, thursday:4, fri:5, friday:5, sat:6, saturday:6 };
-const DAY_NAMES = 'sunday|sun|monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thurs|thur|thu|friday|fri|saturday|sat';
-const RE_WEEK = /^week\s*(\d+)\s*(?:$|[:.\-–—]\s*(.*)$)/i;
-const RE_DAYN = /^(?:week\s*(\d+)\s*[,:\-–—]?\s*)?day\s*(\d+)\s*(?:$|[:.\-–—)]\s*(.*)$)/i;
-const RE_WDAY = new RegExp(`^(?:week\\s*(\\d+)\\s*[,:\\-–—]?\\s*)?(${DAY_NAMES})\\.?\\s*(?:$|[:\\-–—]\\s*(.*)$)`, 'i');
-
-function parsePlan(text){
-  const days = [];
-  let week = null, cur = null, stray = 0;
-  text.split(/\r?\n/).forEach(raw => {
-    const line = raw.replace(/\t/g, ' ').trim();
-    if (!line) return;
-    let m;
-    if ((m = line.match(RE_DAYN))) {
-      if (m[1]) week = +m[1];
-      cur = { kind:'n', week, n:+m[2], title:(m[3] || '').trim(), items:[] }; days.push(cur); return;
-    }
-    if ((m = line.match(RE_WDAY))) {
-      if (m[1]) week = +m[1];
-      cur = { kind:'w', week, dow: WD[m[2].toLowerCase()], title:(m[3] || '').trim(), items:[] }; days.push(cur); return;
-    }
-    if ((m = line.match(RE_WEEK))) { week = +m[1]; cur = null; return; }
-    const item = line.replace(/^(?:[-*•·▪◦]|\d+[.)])\s*/, '');
-    if (cur) cur.items.push(item); else stray++;
-  });
-  if (!days.length) throw new Error('No days found. Start each day with a line like "Mon: Upper body" or "Day 1: Push".');
-  const kinds = new Set(days.map(d => d.kind));
-  if (kinds.size > 1) throw new Error('Use either weekday names (Mon, Tue) or numbered days (Day 1, Day 2), not both.');
-  return { mode: days[0].kind, days, stray };
-}
-
-const isRestDay = d => !d || d.rest || /^rest\b/i.test(d.title || '') ||
-  (!d.title && (!d.items.length || (d.items.length === 1 && /^rest\b/i.test(d.items[0]))));
-
-function workoutFor(date){
-  const w = state.workout;
-  if (!w) return null;
-  const start = parseKey(w.start);
-  const diff = Math.round((startOfDay(date) - start) / 864e5);
-  const weeks = [...new Set(w.days.map(d => d.week).filter(x => x != null))];
-  const numWeeks = weeks.length ? Math.max(...weeks) : 0;
-  if (w.mode === 'n') {
-    if (diff < 0) return { before:true };
-    if (numWeeks) {
-      const wk = Math.floor(diff / 7) % numWeeks + 1, dn = diff % 7 + 1;
-      return Object.assign({ pos:`Week ${wk} of ${numWeeks}, day ${dn}` }, w.days.find(d => d.week === wk && d.n === dn) || { rest:true });
-    }
-    const maxN = Math.max(...w.days.map(d => d.n));
-    const dn = diff % maxN + 1;
-    return Object.assign({ pos:`Day ${dn} of ${maxN}` }, w.days.find(d => d.n === dn) || { rest:true });
-  }
-  const dow = date.getDay();
-  if (numWeeks) {
-    const monday0 = addDays(start, -((start.getDay() + 6) % 7));
-    const sinceMon = Math.round((startOfDay(date) - monday0) / 864e5);
-    if (diff < 0) return { before:true };
-    const wk = Math.floor(sinceMon / 7) % numWeeks + 1;
-    return Object.assign({ pos:`Week ${wk} of ${numWeeks}` }, w.days.find(d => d.week === wk && d.dow === dow) || { rest:true });
-  }
-  return w.days.find(d => d.dow === dow) || { rest:true };
-}
-function workoutStatus(k){
-  if (state.workoutLog[k]) return 'done';
-  const w = state.workout;
-  if (!w || k < w.loaded) return 'na';
-  const d = workoutFor(parseKey(k));
-  if (!d || d.before || isRestDay(d)) return 'off';
-  return k === todayKey() ? 'pending' : 'miss';
-}
-function workoutRate30(){
-  let done = 0, due = 0;
-  for (let i = 0; i < 30; i++) {
-    const st = workoutStatus(keyOf(addDays(new Date(), -i)));
-    if (st === 'done') { done++; due++; } else if (st === 'miss') due++;
-  }
-  return due ? `${Math.round(done / due * 100)}%` : '–';
-}
-function workoutTitle(d){ return d.title || (d.items[0] && d.items.length > 1 ? 'Workout' : d.items[0]) || 'Workout'; }
-
-function renderWorkout(){
-  const el = $('#workout'), aside = $('#workout-aside');
-  const w = state.workout;
-  if (ui.editWorkout) {
-    aside.textContent = '';
-    el.innerHTML = `<form data-form="workout" class="stack">
-        <label for="plan-text" class="small">Paste your plan or upload a text file.</label>
-        ${ui.workoutErr ? `<p class="err" role="alert">${esc(ui.workoutErr)}</p>` : ''}
-        <textarea id="plan-text" class="field plan" name="plan" spellcheck="false" placeholder="Mon: Upper body&#10;- Bench press 3x8&#10;- Rows 3x10&#10;Tue: Run 3 miles easy&#10;Wed: Rest">${esc(ui.draftPlan ?? (w ? w.text : ''))}</textarea>
-        <label class="small row">First day of the plan
-          <input class="field" type="date" name="start" value="${esc(w ? w.start : todayKey())}"></label>
-        <p class="note" style="margin-top:0">Start each day with a weekday (Mon:) or a number (Day 1:), then list the exercises on the lines below. For multi-week programs, add Week 1, Week 2 headings. Days you leave out count as rest days.</p>
-        <div class="row">
-          <button class="btn solid sm" type="submit">Save plan</button>
-          <button class="btn sm" type="button" data-action="uploadPlan">Upload file</button>
-          <button class="linkbtn" type="button" data-action="cancelWorkout">Cancel</button>
-          ${w ? '<button class="linkbtn" type="button" data-action="removeWorkout">Remove plan</button>' : ''}
-        </div>
-      </form>`;
-    return;
-  }
-  if (!w) {
-    aside.textContent = '';
-    el.innerHTML = `<p class="muted">No workout plan loaded yet.</p><button class="btn sm" data-action="editWorkout">Load a plan</button>`;
-    return;
-  }
-  const now = new Date(), k = todayKey();
-  const today = workoutFor(now), tmr = workoutFor(addDays(now, 1));
-  aside.textContent = today && today.pos ? today.pos : '';
-  let body;
-  if (today.before) body = `<p class="kicker">Your plan starts ${fmtDay(parseKey(w.start))}.</p>`;
-  else if (isRestDay(today)) body = `<p class="kicker">Rest day</p>${today.items && today.items.length ? `<ul class="wlist">${today.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : ''}`;
-  else {
-    const doneEntry = state.workoutLog[k];
-    const items = today.title ? today.items : today.items.slice(today.items.length > 1 ? 0 : 1);
-    body = `<p class="kicker">${esc(workoutTitle(today))}</p>
-      ${items.length ? `<ul class="wlist">${items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : ''}
-      ${doneEntry
-        ? `<div class="row"><span class="wdone">✓ Workout done</span><button class="linkbtn" data-action="workoutUndo">Undo</button></div>`
-        : `<button class="btn solid sm" data-action="workoutDone">Mark workout done</button>`}`;
-  }
-  const next = !tmr || tmr.before ? '' : isRestDay(tmr) ? 'Rest day' : workoutTitle(tmr);
-  el.innerHTML = `${body}
-    ${next ? `<p class="note">Tomorrow: ${esc(next)}</p>` : ''}
-    <button class="linkbtn" data-action="editWorkout">Edit plan</button>`;
 }
 
 /* ---------- CSV history export ---------- */
@@ -995,18 +879,12 @@ function download(name, text, type){
 function buildCsv(){
   const rows = [['date','weekday','item','type','status']];
   const word = { done:'done', miss:'missed', pending:'not yet' };
-  const starts = [...Object.keys(state.log), ...Object.keys(state.workoutLog), ...state.tasks.map(t => t.created),
-    state.workout && state.workout.loaded].filter(Boolean).sort();
+  const starts = [...Object.keys(state.log), ...state.tasks.map(t => t.created)].filter(Boolean).sort();
   const today = todayKey();
   let d = parseKey(starts[0] || today);
   for (let guard = 0; keyOf(d) <= today && guard < 4000; guard++, d = addDays(d, 1)) {
     const k = keyOf(d), wd = DOW[d.getDay()];
     state.tasks.forEach(t => { const st = statusFor(t, k); if (word[st]) rows.push([k, wd, t.title, 'task', word[st]]); });
-    const ws = workoutStatus(k);
-    if (word[ws]) {
-      const plan = state.workoutLog[k] && state.workoutLog[k].title || (() => { const p = workoutFor(d); return p && !p.before ? workoutTitle(p) : 'Workout'; })();
-      rows.push([k, wd, plan, 'workout', word[ws]]);
-    }
   }
   return rows.map(r => r.map(c => /[",\n]/.test(c) ? `"${String(c).replace(/"/g, '""')}"` : c).join(',')).join('\n');
 }
@@ -1334,6 +1212,100 @@ async function lookupBook(text){
   return out;
 }
 
+/* ---------- Counter ---------- */
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+function counters(){ return state.counters || (state.counters = []); }
+function fmtLong(k){ return parseKey(k).toLocaleDateString([], { month:'short', day:'numeric', year:'numeric' }); }
+function ctrForm(c){
+  return `<form data-form="ctrSave" data-id="${c ? c.id : ''}" class="addform">
+      <label class="lbl wide">What are you counting
+        <input class="field" name="title" value="${esc(c ? c.title : '')}" required maxlength="100" placeholder="Like: No soda"></label>
+      <label class="lbl wide">Counting from
+        <input class="field" name="since" type="date" value="${esc(c ? c.since : todayKey())}" max="${todayKey()}" required></label>
+      <div class="row wide">
+        <button class="btn solid sm" type="submit">${c ? 'Save' : 'Start counting'}</button>
+        <button class="linkbtn" type="button" data-action="ctrCancel">Cancel</button>
+        ${c ? `<button class="linkbtn" type="button" data-action="ctrDelete" data-id="${c.id}" style="margin-left:auto">Delete</button>` : ''}
+      </div>
+    </form>`;
+}
+function renderCounter(){
+  const el = $('#counter'), list = counters();
+  const rows = list.map(c => {
+    if (ui.ctr.edit === c.id) return ctrForm(c);
+    const n = Math.max(0, -daysUntil(c.since));
+    const extra = [c.best > n ? `Longest ${plural(c.best, 'day')}` : '', c.resets ? `Reset ${plural(c.resets, 'time')}` : ''].filter(Boolean).join(' · ');
+    return `<div class="ctr">
+        <div class="ctr-n">${n}<small>${n === 1 ? 'day' : 'days'}</small></div>
+        <div><div class="title">${esc(c.title)}</div>
+          <div class="when">Since ${fmtLong(c.since)}${extra ? `<br>${esc(extra)}` : ''}</div></div>
+        <div class="acts">
+          <button class="btn sm" data-action="ctrReset" data-id="${c.id}">Reset</button>
+          <button class="linkbtn" data-action="ctrEdit" data-id="${c.id}">Edit</button>
+        </div>
+      </div>`;
+  }).join('');
+  el.innerHTML = `${rows || (ui.ctr.adding ? '' : '<p class="muted">Nothing being counted yet. Add something to start counting the days.</p>')}
+    ${ui.ctr.adding ? ctrForm(null) : '<button class="btn sm" style="margin-top:10px" data-action="ctrShowAdd">Add a counter</button>'}`;
+}
+
+/* ---------- Subscriptions ---------- */
+function subs(){ return state.subs || (state.subs = []); }
+const money = n => n.toLocaleString('en-US', { style:'currency', currency:'USD' });
+function addMonthsClamped(k, months){
+  const a = parseKey(k), y = a.getFullYear(), m = a.getMonth() + months;
+  const last = new Date(y, m + 1, 0).getDate();
+  return keyOf(new Date(y, m, Math.min(a.getDate(), last)));
+}
+function nextRenewal(sub){
+  if (!sub.track || !sub.renewal) return null;
+  const step = sub.cycle === 'annual' ? 12 : 1, t = todayKey();
+  for (let i = 0; i < 1200; i++) { const k = addMonthsClamped(sub.renewal, i * step); if (k >= t) return k; }
+  return null;
+}
+function subForm(x){
+  const track = x ? !!x.track : false;
+  return `<form data-form="subSave" data-id="${x ? x.id : ''}" class="addform">
+      <label class="lbl wide">Name<input class="field" name="name" value="${esc(x ? x.name : '')}" required maxlength="80" placeholder="Like: Netflix"></label>
+      <label class="lbl">Price<input class="field" name="price" inputmode="decimal" value="${x ? x.price.toFixed(2) : ''}" required placeholder="0.00"></label>
+      <label class="lbl">Billed<select class="field" name="cycle">
+        <option value="monthly"${!x || x.cycle === 'monthly' ? ' selected' : ''}>Monthly</option>
+        <option value="annual"${x && x.cycle === 'annual' ? ' selected' : ''}>Annually</option></select></label>
+      <label class="checkrow wide"><input type="checkbox" name="track"${track ? ' checked' : ''}> Track the renewal date</label>
+      <label class="lbl wide renew"${track ? '' : ' hidden'}>Next renewal date
+        <input class="field" name="renewal" type="date" value="${esc(x && x.renewal ? (nextRenewal(x) || x.renewal) : '')}"${track ? ' required' : ''}></label>
+      <div class="row wide">
+        <button class="btn solid sm" type="submit">${x ? 'Save' : 'Add subscription'}</button>
+        <button class="linkbtn" type="button" data-action="subCancel">Cancel</button>
+        ${x ? `<button class="linkbtn" type="button" data-action="subDelete" data-id="${x.id}" style="margin-left:auto">Delete</button>` : ''}
+      </div>
+    </form>`;
+}
+function renderSubs(){
+  const el = $('#subs'), aside = $('#subs-aside'), list = subs();
+  const perMonth = list.reduce((t, x) => t + (x.cycle === 'annual' ? x.price / 12 : x.price), 0);
+  aside.textContent = list.length ? `${money(perMonth)}/mo` : '';
+  const sorted = list.map(x => ({ x, next: nextRenewal(x) })).sort((a, b) =>
+    (a.next && b.next) ? a.next.localeCompare(b.next) : a.next ? -1 : b.next ? 1 : a.x.name.localeCompare(b.x.name));
+  const rows = sorted.map(({ x, next }) => {
+    if (ui.sub.edit === x.id) return subForm(x);
+    let when, soon = false;
+    if (next) {
+      const n = daysUntil(next); soon = n <= 7;
+      when = `${n === 0 ? 'Renews today' : n === 1 ? 'Renews tomorrow' : `Renews in ${n} days`}, ${fmtDay(parseKey(next))}`;
+    } else when = x.cycle === 'annual' ? 'Billed annually' : 'Billed monthly';
+    const price = x.cycle === 'annual'
+      ? `${money(x.price)}/yr<small>${money(x.price / 12)}/mo</small>` : `${money(x.price)}/mo`;
+    return `<div class="up">
+        <div><div class="title">${esc(x.name)}</div><div class="when${soon ? ' soon' : ''}">${esc(when)}</div></div>
+        <div class="sub-price">${price}<br><button class="linkbtn" data-action="subEdit" data-id="${x.id}">Edit</button></div>
+      </div>`;
+  }).join('');
+  el.innerHTML = `${list.length ? `<div class="subtot"><b>${money(perMonth)}</b><span>a month</span><span>${money(perMonth * 12)} a year</span></div>` : ''}
+    ${rows || (ui.sub.adding ? '' : '<p class="muted">No subscriptions yet.</p>')}
+    ${ui.sub.adding ? subForm(null) : '<button class="btn sm" style="margin-top:10px" data-action="subShowAdd">Add a subscription</button>'}`;
+}
+
 /* ---------- Collapsible sections ---------- */
 function setupCollapse(){
   document.querySelectorAll('.stop[data-section]').forEach(sec => {
@@ -1468,7 +1440,7 @@ function renderGames(){
 /* ---------- Actions ---------- */
 function renderAll(){
   $('#today-label').textContent = new Date().toLocaleDateString([], { weekday:'long', month:'long', day:'numeric' });
-  renderWeather(); renderOutfit(); renderCalendar(); renderUpcoming(); renderTodo(); renderWorkout(); renderList('friday'); renderList('watch'); renderReading(); renderGames();
+  renderWeather(); renderOutfit(); renderCalendar(); renderUpcoming(); renderTodo(); renderList('friday'); renderList('watch'); renderReading(); renderCounter(); renderSubs(); renderGames();
   renderedDay = todayKey();
 }
 
@@ -1575,6 +1547,29 @@ const actions = {
     tdReset(); save(); renderTodoTree();
   },
   tdCancel(){ tdReset(); renderTodoTree(); },
+  ctrShowAdd(){ ui.ctr = { adding:true, edit:null }; renderCounter(); const i = $('#counter input[name=title]'); if (i) i.focus(); },
+  ctrEdit(_, id){ ui.ctr = { adding:false, edit:id }; renderCounter(); },
+  ctrCancel(){ ui.ctr = { adding:false, edit:null }; renderCounter(); },
+  ctrReset(_, id){
+    const c = counters().find(x => x.id === id); if (!c) return;
+    const n = Math.max(0, -daysUntil(c.since));
+    if (!confirm(`Reset “${c.title}” to zero? It's at ${plural(n, 'day')}.`)) return;
+    c.best = Math.max(c.best || 0, n); c.resets = (c.resets || 0) + 1; c.since = todayKey();
+    save(); renderCounter();
+  },
+  ctrDelete(_, id){
+    const c = counters().find(x => x.id === id);
+    if (!c || !confirm(`Delete the “${c.title}” counter?`)) return;
+    state.counters = counters().filter(x => x.id !== id); ui.ctr = { adding:false, edit:null }; save(); renderCounter();
+  },
+  subShowAdd(){ ui.sub = { adding:true, edit:null }; renderSubs(); const i = $('#subs input[name=name]'); if (i) i.focus(); },
+  subEdit(_, id){ ui.sub = { adding:false, edit:id }; renderSubs(); },
+  subCancel(){ ui.sub = { adding:false, edit:null }; renderSubs(); },
+  subDelete(_, id){
+    const x = subs().find(y => y.id === id);
+    if (!x || !confirm(`Delete “${x.name}”?`)) return;
+    state.subs = subs().filter(y => y.id !== id); ui.sub = { adding:false, edit:null }; save(); renderSubs();
+  },
   listCheck(btn, id){
     const key = btn.dataset.list, row = btn.closest('.task');
     const commit = () => {
@@ -1663,19 +1658,6 @@ const actions = {
     download(`meatloaf-backup-${todayKey()}.json`, JSON.stringify(keep, null, 2), 'application/json');
   },
   exportLog(){ download(`meatloaf-history-${todayKey()}.csv`, buildCsv(), 'text/csv'); },
-  editWorkout(){ ui.editWorkout = true; ui.workoutErr = ''; ui.draftPlan = null; renderWorkout(); $('#plan-text').focus(); },
-  cancelWorkout(){ ui.editWorkout = false; ui.workoutErr = ''; ui.draftPlan = null; renderWorkout(); },
-  uploadPlan(){ $('#plan-file').click(); },
-  removeWorkout(){
-    if (!confirm('Remove your workout plan? Days you already marked done stay in your history.')) return;
-    state.workout = null; ui.editWorkout = false; save(); renderWorkout(); if (ui.showLog) renderTodo();
-  },
-  workoutDone(){
-    const d = workoutFor(new Date());
-    state.workoutLog[todayKey()] = { title: d && !d.before ? workoutTitle(d) : 'Workout' };
-    save(); renderWorkout(); if (ui.showLog) renderTodo();
-  },
-  workoutUndo(){ delete state.workoutLog[todayKey()]; save(); renderWorkout(); if (ui.showLog) renderTodo(); },
   importData(){ $('#import-file').click(); }
 };
 
@@ -1734,6 +1716,27 @@ const forms = {
     if (f && name) f.name = name;
     tdReset(); save(); renderTodoTree();
   },
+  ctrSave(form){
+    const title = form.elements['title'].value.trim(), since = form.elements['since'].value;
+    if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(since)) return;
+    const start = since > todayKey() ? todayKey() : since;
+    const c = form.dataset.id && counters().find(x => x.id === form.dataset.id);
+    if (c) Object.assign(c, { title, since: start });
+    else counters().push({ id: uid(), title, since: start, created: todayKey(), best: 0, resets: 0 });
+    ui.ctr = { adding:false, edit:null }; save(); renderCounter();
+  },
+  subSave(form){
+    const E = form.elements, name = E['name'].value.trim();
+    const price = parseFloat(E['price'].value.replace(/[$,\s]/g, ''));
+    if (!name) return;
+    if (!isFinite(price) || price < 0) { E['price'].setCustomValidity('Enter a price, like 12.99'); E['price'].reportValidity(); return; }
+    const track = E['track'].checked, renewal = E['renewal'].value;
+    if (track && !/^\d{4}-\d{2}-\d{2}$/.test(renewal)) { E['renewal'].setCustomValidity('Pick the renewal date'); E['renewal'].reportValidity(); return; }
+    const data = { name, price: Math.round(price * 100) / 100, cycle: E['cycle'].value === 'annual' ? 'annual' : 'monthly', track, renewal: track ? renewal : null };
+    const x = form.dataset.id && subs().find(y => y.id === form.dataset.id);
+    if (x) Object.assign(x, data); else subs().push(Object.assign({ id: uid(), created: todayKey() }, data));
+    ui.sub = { adding:false, edit:null }; save(); renderSubs();
+  },
   listAdd(form){
     const key = form.dataset.list, title = form.elements['title'].value.trim();
     if (!title || !LISTS[key]) return;
@@ -1748,18 +1751,6 @@ const forms = {
     const title = form.elements['title'].value.trim(); if (!title) return;
     state.tasks.push({ id: uid(), title, days: [0,1,2,3,4,5,6], created: todayKey() });
     save(); renderTodo(); const inp = $('#todo input[name=title]'); if (inp) inp.focus();
-  },
-  workout(form){
-    const text = form.elements['plan'].value, start = form.elements['start'].value;
-    ui.draftPlan = text;
-    try {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) throw new Error('Pick the first day of the plan.');
-      const parsed = parsePlan(text);
-      const loaded = state.workout && state.workout.loaded && state.workout.loaded < todayKey() ? state.workout.loaded : todayKey();
-      state.workout = { text, start, mode: parsed.mode, days: parsed.days, loaded };
-      ui.editWorkout = false; ui.workoutErr = ''; ui.draftPlan = null;
-      save(); renderWorkout(); if (ui.showLog) renderTodo();
-    } catch (err) { ui.workoutErr = err.message; renderWorkout(); }
   },
   addUp(form){
     const title = form.elements['title'].value.trim(), date = form.elements['date'].value, note = form.elements['note'].value.trim();
@@ -1782,6 +1773,12 @@ document.addEventListener('submit', e => {
   e.preventDefault();
   forms[f.dataset.form](f);
 });
+document.addEventListener('change', e => {
+  if (e.target.name !== 'track' || !e.target.closest('[data-form=subSave]')) return;
+  const f = e.target.closest('form'), wrap = f.querySelector('.renew'), d = f.elements['renewal'];
+  wrap.hidden = !e.target.checked; d.required = e.target.checked;
+  if (e.target.checked) d.focus();
+});
 document.addEventListener('input', e => { if (e.target.setCustomValidity) e.target.setCustomValidity(''); });
 
 $('#import-file').addEventListener('change', async e => {
@@ -1797,15 +1794,6 @@ $('#import-file').addEventListener('change', async e => {
   } finally { e.target.value = ''; }
 });
 
-$('#plan-file').addEventListener('change', async e => {
-  const file = e.target.files[0]; if (!file) return;
-  const start = $('#workout input[name=start]');
-  ui.draftPlan = await file.text(); ui.workoutErr = '';
-  const keepStart = start ? start.value : null;
-  renderWorkout();
-  if (keepStart) $('#workout input[name=start]').value = keepStart;
-  e.target.value = '';
-});
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
@@ -1815,13 +1803,6 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('hashchange', () => { if (location.hash.startsWith('#cal=')) { importFromHash(); renderCalendar(); } });
 
 /* ---------- Start ---------- */
-if (!state.workout && EMBEDDED_PLAN.trim()) {
-  try {
-    const p = parsePlan(EMBEDDED_PLAN);
-    state.workout = { text: EMBEDDED_PLAN.trim(), start: EMBEDDED_PLAN_START || todayKey(), mode: p.mode, days: p.days, loaded: todayKey() };
-    save();
-  } catch (e) {}
-}
 importFromHash();
 setupCollapse();
 renderAll();
