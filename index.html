@@ -97,6 +97,14 @@ main{max-width:600px;margin:0 auto;padding:4px 16px 48px}
 .subtot span{color:var(--muted);font-size:14px}
 .sub-price{font-weight:700;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .sub-price small{display:block;font-weight:400;color:var(--muted);font-size:13px}
+.subcat{display:flex;justify-content:space-between;align-items:baseline;margin:18px 0 2px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.subcat span:last-child{letter-spacing:0;text-transform:none;font-weight:600;font-variant-numeric:tabular-nums}
+.rbline{font-size:13px;color:var(--good);margin-top:2px}
+.rebates{display:grid;gap:8px;background:var(--paper);border-radius:10px;padding:10px}
+.rb{display:flex;gap:6px;align-items:center}
+.rb .amt{width:96px;flex:0 0 96px}
+.rb .why{flex:1;min-width:0}
+.rb-net{margin:0;font-size:14px;font-weight:600}
 .checkrow{display:flex;align-items:center;gap:10px;font-size:15px;cursor:pointer}
 .checkrow input{width:22px;height:22px;accent-color:var(--ink);margin:0}
 .addform label.lbl{font-size:13px;color:var(--muted);display:grid;gap:4px}
@@ -1259,10 +1267,31 @@ function addMonthsClamped(k, months){
 }
 // Custom intervals ("every 4 weeks") are stored as a count and a unit.
 const intervalDays = x => Math.max(1, (x.every || 4) * (x.unit === 'days' ? 1 : 7));
-function perMonthCost(x){
-  if (x.cycle === 'annual') return x.price / 12;
-  if (x.cycle === 'interval') return x.price * (365.25 / 12) / intervalDays(x);
-  return x.price;
+const SUB_CATS = [['utilities', 'Utilities'], ['media', 'Media'], ['misc', 'Misc']];
+const subCat = x => SUB_CATS.some(c => c[0] === x.category) ? x.category : 'misc';
+const rebateTotal = x => (x.rebates || []).reduce((t, r) => t + (r.amount || 0), 0);
+const netPrice = x => Math.max(0, Math.round((x.price - rebateTotal(x)) * 100) / 100);
+// How many times a month this bill comes due.
+function monthlyFactor(x){
+  if (x.cycle === 'annual') return 1 / 12;
+  if (x.cycle === 'interval') return (365.25 / 12) / intervalDays(x);
+  return 1;
+}
+const perMonthCost = x => netPrice(x) * monthlyFactor(x);
+const perMonthGross = x => x.price * monthlyFactor(x);
+function rbRow(r){
+  return `<div class="rb">
+      <input class="field amt" name="rbAmt" inputmode="decimal" placeholder="0.00" value="${r && r.amount ? r.amount.toFixed(2) : ''}" aria-label="Rebate amount">
+      <input class="field why" name="rbWhy" placeholder="Why, like Amex credit" maxlength="80" value="${esc(r ? r.reason : '')}" aria-label="Reason for the rebate">
+      <button type="button" class="xbtn" data-action="rbRemove" aria-label="Remove this rebate">×</button>
+    </div>`;
+}
+const parseMoney = v => parseFloat(String(v).replace(/[$,\s]/g, ''));
+function updateNet(form){
+  const out = form.querySelector('.rb-net'); if (!out) return;
+  const gross = parseMoney(form.elements['price'].value);
+  const off = [...form.querySelectorAll('.rb .amt')].reduce((t, i) => t + (parseMoney(i.value) || 0), 0);
+  out.textContent = isFinite(gross) ? `You pay ${money(Math.max(0, gross - off))} after ${money(off)} in rebates.` : '';
 }
 function cycleWords(x){
   if (x.cycle === 'annual') return 'annually';
@@ -1284,11 +1313,13 @@ function nextRenewal(sub){
   return null;
 }
 function subForm(x){
-  const track = x ? !!x.track : false;
+  const track = x ? !!x.track : false, hasRb = !!(x && x.rebates && x.rebates.length);
   return `<form data-form="subSave" data-id="${x ? x.id : ''}" class="addform">
       <label class="lbl wide">Name<input class="field" name="name" value="${esc(x ? x.name : '')}" required maxlength="80" placeholder="Like: Netflix"></label>
+      <label class="lbl">Category<select class="field" name="category">${SUB_CATS.map(([v, l]) =>
+        `<option value="${v}"${(x ? subCat(x) : 'misc') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
       <label class="lbl">Price<input class="field" name="price" inputmode="decimal" value="${x ? x.price.toFixed(2) : ''}" required placeholder="0.00"></label>
-      <label class="lbl">Billed<select class="field" name="cycle">
+      <label class="lbl wide">Billed<select class="field" name="cycle">
         <option value="monthly"${!x || x.cycle === 'monthly' ? ' selected' : ''}>Monthly</option>
         <option value="annual"${x && x.cycle === 'annual' ? ' selected' : ''}>Annually</option>
         <option value="interval"${x && x.cycle === 'interval' ? ' selected' : ''}>Custom interval</option></select></label>
@@ -1301,6 +1332,12 @@ function subForm(x){
               <option value="days"${x && x.unit === 'days' ? ' selected' : ''}>days</option>
             </select>
           </span></label>
+      </div>
+      <label class="checkrow wide"><input type="checkbox" name="hasRebate"${hasRb ? ' checked' : ''}> Has a rebate or credit</label>
+      <div class="wide rebates"${hasRb ? '' : ' hidden'}>
+        <div class="rb-rows">${(hasRb ? x.rebates : [null]).map(rbRow).join('')}</div>
+        <div class="row"><button type="button" class="linkbtn" data-action="rbAdd">Add another rebate</button></div>
+        <p class="rb-net"></p>
       </div>
       <label class="checkrow wide"><input type="checkbox" name="track"${track ? ' checked' : ''}> Track the renewal date</label>
       <label class="lbl wide renew"${track ? '' : ' hidden'}>Next renewal date
@@ -1315,10 +1352,11 @@ function subForm(x){
 function renderSubs(){
   const el = $('#subs'), aside = $('#subs-aside'), list = subs();
   const perMonth = list.reduce((t, x) => t + perMonthCost(x), 0);
+  const saved = list.reduce((t, x) => t + perMonthGross(x), 0) - perMonth;
   aside.textContent = list.length ? `${money(perMonth)}/mo` : '';
   const sorted = list.map(x => ({ x, next: nextRenewal(x) })).sort((a, b) =>
     (a.next && b.next) ? a.next.localeCompare(b.next) : a.next ? -1 : b.next ? 1 : a.x.name.localeCompare(b.x.name));
-  const rows = sorted.map(({ x, next }) => {
+  const rowHtml = ({ x, next }) => {
     if (ui.sub.edit === x.id) return subForm(x);
     let when, soon = false;
     if (next) {
@@ -1326,16 +1364,26 @@ function renderSubs(){
       when = `${n === 0 ? 'Renews today' : n === 1 ? 'Renews tomorrow' : `Renews in ${n} days`}, ${fmtDay(parseKey(next))}`;
     } else when = `Billed ${cycleWords(x)}`;
     if (next && x.cycle === 'interval') when += `. Billed ${cycleWords(x)}`;
+    const net = netPrice(x), rbs = (x.rebates || []).filter(r => r.amount > 0);
     const price = x.cycle === 'interval'
-      ? `${money(x.price)}<small>${esc(cycleWords(x))}, about ${money(perMonthCost(x))}/mo</small>`
+      ? `${money(net)}<small>about ${money(perMonthCost(x))}/mo</small>`
       : x.cycle === 'annual'
-      ? `${money(x.price)}/yr<small>${money(x.price / 12)}/mo</small>` : `${money(x.price)}/mo`;
+      ? `${money(net)}/yr<small>${money(net / 12)}/mo</small>` : `${money(net)}/mo`;
+    const rbHtml = rbs.length ? `<div class="rbline"><span class="muted">${money(x.price)} full price</span>${rbs.map(r =>
+      `<br>−${money(r.amount)}${r.reason ? ` ${esc(r.reason)}` : ''}`).join('')}</div>` : '';
     return `<div class="up">
-        <div><div class="title">${esc(x.name)}</div><div class="when${soon ? ' soon' : ''}">${esc(when)}</div></div>
+        <div><div class="title">${esc(x.name)}</div><div class="when${soon ? ' soon' : ''}">${esc(when)}</div>${rbHtml}</div>
         <div class="sub-price">${price}<br><button class="linkbtn" data-action="subEdit" data-id="${x.id}">Edit</button></div>
       </div>`;
+  };
+  const rows = SUB_CATS.map(([key, label]) => {
+    const group = sorted.filter(r => subCat(r.x) === key);
+    if (!group.length) return '';
+    const sub = group.reduce((t, r) => t + perMonthCost(r.x), 0);
+    return `<div class="subcat"><span>${label}</span><span>${money(sub)}/mo</span></div>${group.map(rowHtml).join('')}`;
   }).join('');
-  el.innerHTML = `${list.length ? `<div class="subtot"><b>${money(perMonth)}</b><span>a month</span><span>${money(perMonth * 12)} a year</span></div>` : ''}
+  el.innerHTML = `${list.length ? `<div class="subtot"><b>${money(perMonth)}</b><span>a month</span><span>${money(perMonth * 12)} a year</span>${
+      saved > 0.004 ? `<span style="color:var(--good)">Rebates save ${money(saved)} a month</span>` : ''}</div>` : ''}
     ${rows || (ui.sub.adding ? '' : '<p class="muted">No subscriptions yet.</p>')}
     ${ui.sub.adding ? subForm(null) : '<button class="btn sm" style="margin-top:10px" data-action="subShowAdd">Add a subscription</button>'}`;
 }
@@ -1596,8 +1644,19 @@ const actions = {
     if (!c || !confirm(`Delete the “${c.title}” counter?`)) return;
     state.counters = counters().filter(x => x.id !== id); ui.ctr = { adding:false, edit:null }; save(); renderCounter();
   },
+  rbAdd(btn){
+    const form = btn.closest('form'), rows = form.querySelector('.rb-rows');
+    rows.insertAdjacentHTML('beforeend', rbRow(null));
+    rows.lastElementChild.querySelector('.amt').focus(); updateNet(form);
+  },
+  rbRemove(btn){
+    const form = btn.closest('form'), row = btn.closest('.rb');
+    if (form.querySelectorAll('.rb').length > 1) row.remove();
+    else row.querySelectorAll('input').forEach(i => { i.value = ''; });
+    updateNet(form);
+  },
   subShowAdd(){ ui.sub = { adding:true, edit:null }; renderSubs(); const i = $('#subs input[name=name]'); if (i) i.focus(); },
-  subEdit(_, id){ ui.sub = { adding:false, edit:id }; renderSubs(); },
+  subEdit(_, id){ ui.sub = { adding:false, edit:id }; renderSubs(); const f = $('#subs form[data-form=subSave]'); if (f) updateNet(f); },
   subCancel(){ ui.sub = { adding:false, edit:null }; renderSubs(); },
   subDelete(_, id){
     const x = subs().find(y => y.id === id);
@@ -1767,7 +1826,23 @@ const forms = {
     const track = E['track'].checked, renewal = E['renewal'].value;
     if (track && !/^\d{4}-\d{2}-\d{2}$/.test(renewal)) { E['renewal'].setCustomValidity('Pick the renewal date'); E['renewal'].reportValidity(); return; }
     const cycle = ['annual', 'interval'].includes(E['cycle'].value) ? E['cycle'].value : 'monthly';
-    const data = { name, price: Math.round(price * 100) / 100, cycle, track, renewal: track ? renewal : null };
+    const gross = Math.round(price * 100) / 100;
+    const rebates = [];
+    if (E['hasRebate'].checked) {
+      for (const row of form.querySelectorAll('.rb')) {
+        const amtEl = row.querySelector('.amt'), raw = amtEl.value.trim(), reason = row.querySelector('.why').value.trim();
+        if (!raw && !reason) continue;
+        const amount = parseMoney(raw);
+        if (!isFinite(amount) || amount <= 0) { amtEl.setCustomValidity('Enter the rebate amount, like 5.00'); amtEl.reportValidity(); return; }
+        rebates.push({ amount: Math.round(amount * 100) / 100, reason });
+      }
+      if (rebates.reduce((t, r) => t + r.amount, 0) > gross + 0.001) {
+        const amtEl = form.querySelector('.rb .amt');
+        amtEl.setCustomValidity("Rebates can't add up to more than the price"); amtEl.reportValidity(); return;
+      }
+    }
+    const category = SUB_CATS.some(c => c[0] === E['category'].value) ? E['category'].value : 'misc';
+    const data = { name, category, price: gross, rebates, cycle, track, renewal: track ? renewal : null };
     if (cycle === 'interval') {
       const every = parseInt(E['every'].value, 10);
       if (!(every >= 1 && every <= 999)) { E['every'].setCustomValidity('Enter how often, like 4'); E['every'].reportValidity(); return; }
@@ -1816,6 +1891,12 @@ document.addEventListener('submit', e => {
   forms[f.dataset.form](f);
 });
 document.addEventListener('change', e => {
+  if (e.target.name === 'hasRebate' && e.target.closest('[data-form=subSave]')) {
+    const f = e.target.closest('form'), box = f.querySelector('.rebates');
+    box.hidden = !e.target.checked;
+    if (e.target.checked) { updateNet(f); box.querySelector('.amt').focus(); }
+    return;
+  }
   if (e.target.name === 'cycle' && e.target.closest('[data-form=subSave]')) {
     e.target.closest('form').querySelector('.interval').hidden = e.target.value !== 'interval';
     return;
@@ -1825,7 +1906,11 @@ document.addEventListener('change', e => {
   wrap.hidden = !e.target.checked; d.required = e.target.checked;
   if (e.target.checked) d.focus();
 });
-document.addEventListener('input', e => { if (e.target.setCustomValidity) e.target.setCustomValidity(''); });
+document.addEventListener('input', e => {
+  if (e.target.setCustomValidity) e.target.setCustomValidity('');
+  const f = e.target.closest && e.target.closest('[data-form=subSave]');
+  if (f && (e.target.name === 'price' || e.target.name === 'rbAmt')) updateNet(f);
+});
 
 $('#import-file').addEventListener('change', async e => {
   const file = e.target.files[0]; if (!file) return;
