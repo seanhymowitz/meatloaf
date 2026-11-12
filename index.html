@@ -1257,9 +1257,29 @@ function addMonthsClamped(k, months){
   const last = new Date(y, m + 1, 0).getDate();
   return keyOf(new Date(y, m, Math.min(a.getDate(), last)));
 }
+// Custom intervals ("every 4 weeks") are stored as a count and a unit.
+const intervalDays = x => Math.max(1, (x.every || 4) * (x.unit === 'days' ? 1 : 7));
+function perMonthCost(x){
+  if (x.cycle === 'annual') return x.price / 12;
+  if (x.cycle === 'interval') return x.price * (365.25 / 12) / intervalDays(x);
+  return x.price;
+}
+function cycleWords(x){
+  if (x.cycle === 'annual') return 'annually';
+  if (x.cycle === 'monthly') return 'monthly';
+  const n = x.every || 4, u = x.unit === 'days' ? 'day' : 'week';
+  return n === 1 ? `every ${u}` : `every ${n} ${u}s`;
+}
+// The saved date is a starting point; the next renewal is always counted forward from it.
 function nextRenewal(sub){
   if (!sub.track || !sub.renewal) return null;
-  const step = sub.cycle === 'annual' ? 12 : 1, t = todayKey();
+  const t = todayKey();
+  if (sub.cycle === 'interval') {
+    const step = intervalDays(sub), behind = -daysUntil(sub.renewal);
+    if (behind <= 0) return sub.renewal;
+    return keyOf(addDays(parseKey(sub.renewal), Math.ceil(behind / step) * step));
+  }
+  const step = sub.cycle === 'annual' ? 12 : 1;
   for (let i = 0; i < 1200; i++) { const k = addMonthsClamped(sub.renewal, i * step); if (k >= t) return k; }
   return null;
 }
@@ -1270,7 +1290,18 @@ function subForm(x){
       <label class="lbl">Price<input class="field" name="price" inputmode="decimal" value="${x ? x.price.toFixed(2) : ''}" required placeholder="0.00"></label>
       <label class="lbl">Billed<select class="field" name="cycle">
         <option value="monthly"${!x || x.cycle === 'monthly' ? ' selected' : ''}>Monthly</option>
-        <option value="annual"${x && x.cycle === 'annual' ? ' selected' : ''}>Annually</option></select></label>
+        <option value="annual"${x && x.cycle === 'annual' ? ' selected' : ''}>Annually</option>
+        <option value="interval"${x && x.cycle === 'interval' ? ' selected' : ''}>Custom interval</option></select></label>
+      <div class="wide interval"${x && x.cycle === 'interval' ? '' : ' hidden'}>
+        <label class="lbl">Renews every
+          <span class="row" style="flex-wrap:nowrap">
+            <input class="field" name="every" type="number" min="1" max="999" step="1" inputmode="numeric" value="${x && x.every ? x.every : 4}" style="width:84px">
+            <select class="field" name="unit" style="flex:1">
+              <option value="weeks"${!x || x.unit !== 'days' ? ' selected' : ''}>weeks</option>
+              <option value="days"${x && x.unit === 'days' ? ' selected' : ''}>days</option>
+            </select>
+          </span></label>
+      </div>
       <label class="checkrow wide"><input type="checkbox" name="track"${track ? ' checked' : ''}> Track the renewal date</label>
       <label class="lbl wide renew"${track ? '' : ' hidden'}>Next renewal date
         <input class="field" name="renewal" type="date" value="${esc(x && x.renewal ? (nextRenewal(x) || x.renewal) : '')}"${track ? ' required' : ''}></label>
@@ -1283,7 +1314,7 @@ function subForm(x){
 }
 function renderSubs(){
   const el = $('#subs'), aside = $('#subs-aside'), list = subs();
-  const perMonth = list.reduce((t, x) => t + (x.cycle === 'annual' ? x.price / 12 : x.price), 0);
+  const perMonth = list.reduce((t, x) => t + perMonthCost(x), 0);
   aside.textContent = list.length ? `${money(perMonth)}/mo` : '';
   const sorted = list.map(x => ({ x, next: nextRenewal(x) })).sort((a, b) =>
     (a.next && b.next) ? a.next.localeCompare(b.next) : a.next ? -1 : b.next ? 1 : a.x.name.localeCompare(b.x.name));
@@ -1293,8 +1324,11 @@ function renderSubs(){
     if (next) {
       const n = daysUntil(next); soon = n <= 7;
       when = `${n === 0 ? 'Renews today' : n === 1 ? 'Renews tomorrow' : `Renews in ${n} days`}, ${fmtDay(parseKey(next))}`;
-    } else when = x.cycle === 'annual' ? 'Billed annually' : 'Billed monthly';
-    const price = x.cycle === 'annual'
+    } else when = `Billed ${cycleWords(x)}`;
+    if (next && x.cycle === 'interval') when += `. Billed ${cycleWords(x)}`;
+    const price = x.cycle === 'interval'
+      ? `${money(x.price)}<small>${esc(cycleWords(x))}, about ${money(perMonthCost(x))}/mo</small>`
+      : x.cycle === 'annual'
       ? `${money(x.price)}/yr<small>${money(x.price / 12)}/mo</small>` : `${money(x.price)}/mo`;
     return `<div class="up">
         <div><div class="title">${esc(x.name)}</div><div class="when${soon ? ' soon' : ''}">${esc(when)}</div></div>
@@ -1732,8 +1766,16 @@ const forms = {
     if (!isFinite(price) || price < 0) { E['price'].setCustomValidity('Enter a price, like 12.99'); E['price'].reportValidity(); return; }
     const track = E['track'].checked, renewal = E['renewal'].value;
     if (track && !/^\d{4}-\d{2}-\d{2}$/.test(renewal)) { E['renewal'].setCustomValidity('Pick the renewal date'); E['renewal'].reportValidity(); return; }
-    const data = { name, price: Math.round(price * 100) / 100, cycle: E['cycle'].value === 'annual' ? 'annual' : 'monthly', track, renewal: track ? renewal : null };
+    const cycle = ['annual', 'interval'].includes(E['cycle'].value) ? E['cycle'].value : 'monthly';
+    const data = { name, price: Math.round(price * 100) / 100, cycle, track, renewal: track ? renewal : null };
+    if (cycle === 'interval') {
+      const every = parseInt(E['every'].value, 10);
+      if (!(every >= 1 && every <= 999)) { E['every'].setCustomValidity('Enter how often, like 4'); E['every'].reportValidity(); return; }
+      data.every = every; data.unit = E['unit'].value === 'days' ? 'days' : 'weeks';
+    } else { data.every = null; data.unit = null; }
     const x = form.dataset.id && subs().find(y => y.id === form.dataset.id);
+    // Editing other details shouldn't move the original start date (keeps month-end renewals on the 31st)
+    if (x && track && x.renewal && x.cycle === cycle && (x.every || null) === data.every && (x.unit || null) === data.unit && renewal === nextRenewal(x)) data.renewal = x.renewal;
     if (x) Object.assign(x, data); else subs().push(Object.assign({ id: uid(), created: todayKey() }, data));
     ui.sub = { adding:false, edit:null }; save(); renderSubs();
   },
@@ -1774,6 +1816,10 @@ document.addEventListener('submit', e => {
   forms[f.dataset.form](f);
 });
 document.addEventListener('change', e => {
+  if (e.target.name === 'cycle' && e.target.closest('[data-form=subSave]')) {
+    e.target.closest('form').querySelector('.interval').hidden = e.target.value !== 'interval';
+    return;
+  }
   if (e.target.name !== 'track' || !e.target.closest('[data-form=subSave]')) return;
   const f = e.target.closest('form'), wrap = f.querySelector('.renew'), d = f.elements['renewal'];
   wrap.hidden = !e.target.checked; d.required = e.target.checked;
