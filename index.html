@@ -66,7 +66,7 @@ main{max-width:600px;margin:0 auto;padding:4px 16px 48px}
 .stop.collapsed .head{margin-bottom:0}
 .stop.collapsed{padding-bottom:18px}
 .xbtn{background:none;border:0;color:var(--muted);font-size:24px;line-height:1;padding:2px 6px;cursor:pointer;margin-left:auto}
-/* Reading tracker */
+/* Folder trees (To Do) */
 .fold-row{display:flex;align-items:center;gap:4px;border-top:1px solid var(--rule)}
 .fold-name{flex:1;min-width:0;text-align:left;background:none;border:0;padding:11px 0;font:inherit;font-weight:650;font-size:17px;color:inherit;display:flex;align-items:center;gap:10px;cursor:pointer}
 .fold-name .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -75,13 +75,6 @@ main{max-width:600px;margin:0 auto;padding:4px 16px 48px}
 .chev.shut{transform:rotate(-45deg)}
 .fold-body{margin-left:3px;padding-left:14px;border-left:2px solid var(--rule)}
 .fold-menu{padding:2px 0 12px}
-.book .bk{flex:1;min-width:0}
-.book .bk a,.book .bk .tt{color:var(--ink);font-weight:600;font-size:16px;text-decoration:none}
-.book .bk a::after{content:" ↗";color:var(--muted);font-weight:400;font-size:13px}
-.book .by{font-size:14px;color:var(--muted)}
-.addbook{background:var(--surface);border-radius:12px;padding:12px;margin:8px 0 10px}
-.addbook .field{width:100%}
-.addbook label{font-size:13px;color:var(--muted);display:grid;gap:4px}
 /* Counter */
 .ctr{display:grid;grid-template-columns:auto 1fr auto;gap:4px 14px;align-items:center;padding:12px 0;border-top:1px solid var(--rule)}
 .ctr:first-child{border-top:0}
@@ -109,6 +102,29 @@ main{max-width:600px;margin:0 auto;padding:4px 16px 48px}
 .checkrow input{width:22px;height:22px;accent-color:var(--ink);margin:0}
 .addform label.lbl{font-size:13px;color:var(--muted);display:grid;gap:4px}
 .addform [hidden]{display:none}
+/* Workouts */
+.wk-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:0 0 4px;font-size:14px;color:var(--muted)}
+.wk-item{display:flex;gap:14px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--rule)}
+.wk-item:first-child{border-top:0}
+.wk-item .box{margin-top:-3px}
+.wk-item .wk-body{flex:1;min-width:0}
+.wk-item .label{font-size:17px}
+.wk-sum{font-size:14px;color:var(--muted);margin-top:2px}
+.wk-item.missed .label{color:var(--muted)}
+.wk-item.missed .wk-sum{color:var(--bad)}
+.box.on{background:var(--good);border-color:var(--good)}
+.box.on::after{content:"";width:8px;height:14px;border:solid #fff;border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-2px)}
+.box:disabled{cursor:default}
+.iv{display:flex;gap:6px;align-items:center;font-size:14px;color:var(--muted)}
+.addform .iv .field{width:52px;flex:0 0 52px;padding:8px 4px;text-align:center}
+.iv .xbtn{margin-left:auto}
+.iv-head{font-size:12px;color:var(--muted)}
+.min-in{display:flex;gap:6px;align-items:center;font-size:14px;color:var(--muted)}
+.addform .min-in .field{width:72px;flex:0 0 72px;text-align:center}
+.wk-form{padding:4px 0 6px}
+.wk-total{margin:0;font-size:14px;font-weight:600}
+.wk-past{margin-top:12px;background:var(--surface);border-radius:12px;padding:4px 14px}
+.wk-past .fold-row:first-child{border-top:0}
 .list-done{margin-top:10px;background:var(--surface);border-radius:12px;padding:6px 14px}
 .list-done .row{justify-content:space-between;padding:8px 0;border-top:1px solid var(--rule);font-size:15px}
 .list-done .row:first-child{border-top:0}
@@ -287,10 +303,10 @@ footer a{color:inherit}
       <div id="watch"></div>
     </section>
 
-    <section class="stop" style="--c:#0078c6" data-section="reading" aria-labelledby="h-reading">
+    <section class="stop" style="--c:#d4145a" data-section="workouts" aria-labelledby="h-workouts">
       <span class="bullet" aria-hidden="true">R</span>
-      <div class="head"><h2 id="h-reading">Reading Tracker</h2><div class="aside" id="reading-aside"></div></div>
-      <div id="reading"></div>
+      <div class="head"><h2 id="h-workouts">Workout Tracker</h2><div class="aside" id="workouts-aside"></div></div>
+      <div id="workouts"></div>
     </section>
 
     <section class="stop" style="--c:#00add0" data-section="counter" aria-labelledby="h-counter">
@@ -387,7 +403,7 @@ function defaults(){
     log: {},
     upcoming: [],
     lists: { friday: [], watch: [] },
-    reading: { folders: [], books: [] },
+    workouts: { weeks: {}, seeded: [] },
     counters: [],
     subs: [],
     collapsed: {},
@@ -404,10 +420,11 @@ function load(){
   return defaults();
 }
 let state = load();
+delete state.reading;
 delete state.workout; delete state.workoutLog;
 function save(){ try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
 
-const ui = { editZip:false, editTasks:false, showLog:false, showAllUp:false, showAddUp:false, showCalHelp:false, showDone:{}, ctr:{ adding:false, edit:null }, sub:{ adding:false, edit:null }, td:{ menu:null, newIn:undefined, addIn:null, renameId:null }, rd:{ menu:null, addIn:null, newIn:undefined, renameId:null, draft:null, busy:false, undo:null } };
+const ui = { editZip:false, editTasks:false, showLog:false, showAllUp:false, showAddUp:false, showCalHelp:false, showDone:{}, wk:{ open:null, showPast:false, pastOpen:{}, addPast:false }, ctr:{ adding:false, edit:null }, sub:{ adding:false, edit:null }, td:{ menu:null, newIn:undefined, addIn:null, renameId:null } };
 let weatherError = null, sportsError = null, renderedDay = todayKey();
 
 /* ---------- Calendar import from the iOS Shortcut ---------- */
@@ -1037,187 +1054,210 @@ function renderTodoTree(){
   el.innerHTML = html;
 }
 
-/* ---------- Reading tracker ---------- */
-function rdState(){
-  if (!state.reading) state.reading = { folders: [], books: [] };
-  return state.reading;
+/* ---------- Workout Tracker ----------
+   Weeks run Monday to Sunday and are stored by their Monday's date. A new week's
+   checklist (3 runs, 1 strength) appears at midnight Sunday night; earlier weeks stay as the archive. */
+const PAST_WORKOUTS = [
+  // Workouts done before the tracker existed. Each loads once.
+  { date:'2026-11-09', type:'run', warmup:5, sets:[{ reps:7, run:1, walk:1 }], cooldown:5 },
+  { date:'2026-11-11', type:'run', warmup:5, sets:[{ reps:7, run:1, walk:1 }], cooldown:5 },
+  { date:'2026-11-13', type:'run', warmup:5, sets:[{ reps:7, run:1.5, walk:1 }], cooldown:5 },
+  { date:'2026-11-15', type:'strength' },
+  { date:'2026-11-17', type:'run', warmup:5, sets:[{ reps:6, run:2, walk:1 }], cooldown:5 },
+  { date:'2026-11-19', type:'strength' },
+  { date:'2026-11-21', type:'run', warmup:5, sets:[{ reps:6, run:2, walk:1 }], cooldown:5 },
+];
+const WK_TEMPLATE = ['run', 'run', 'run', 'strength'];
+const wkLabel = t => t === 'run' ? 'Running' : 'Strength';
+function wkStore(){
+  if (!state.workouts || typeof state.workouts !== 'object') state.workouts = {};
+  if (!state.workouts.weeks) state.workouts.weeks = {};
+  if (!state.workouts.seeded) state.workouts.seeded = [];
+  return state.workouts;
 }
-const rdKids = id => rdState().folders.filter(f => (f.parent || null) === id).sort((a,b) => a.name.localeCompare(b.name));
-function rdDescendants(id){
-  const out = [id];
-  rdKids(id).forEach(k => out.push(...rdDescendants(k.id)));
-  return out;
+function weekOf(k){ const d = parseKey(k); return keyOf(addDays(d, -((d.getDay() + 6) % 7))); }
+function weekRange(wk){
+  const a = parseKey(wk), b = addDays(a, 6), f = d => d.toLocaleDateString([], { month:'short', day:'numeric' });
+  return a.getMonth() === b.getMonth() ? `${f(a)}–${b.getDate()}` : `${f(a)} – ${f(b)}`;
 }
-function rdCount(id){
-  const ids = new Set(rdDescendants(id));
-  return rdState().books.filter(b => ids.has(b.folder)).length;
+function ensureWeek(wk){
+  const W = wkStore().weeks;
+  if (!W[wk]) W[wk] = WK_TEMPLATE.map(type => ({ id: uid(), type, done: false }));
+  return W[wk];
 }
-function rdPath(id){
-  const f = rdState().folders.find(x => x.id === id);
-  if (!f) return '';
-  return f.parent ? `${rdPath(f.parent)} / ${f.name}` : f.name;
+// Every week from the first one tracked through this week gets a checklist, so skipped weeks show as missed.
+function ensureWeeksThrough(current){
+  const keys = Object.keys(wkStore().weeks).sort();
+  let k = keys.length && keys[0] < current ? keys[0] : current;
+  for (let guard = 0; k <= current && guard < 600; guard++) { ensureWeek(k); k = keyOf(addDays(parseKey(k), 7)); }
 }
-function rdFolderForm(parent){
-  return `<form data-form="rdFolder" data-parent="${parent || ''}" class="row" style="margin:8px 0 10px">
-      <input class="field" name="name" placeholder="${parent ? 'Subcategory name' : 'Category name, like Fiction'}" maxlength="60" required style="flex:1" aria-label="Category name">
-      <button class="btn solid sm" type="submit">Add</button>
-      <button class="linkbtn" type="button" data-action="rdCancel">Cancel</button>
-    </form>`;
+function parseMin(v){
+  v = String(v || '').trim().toLowerCase();
+  if (!v) return 0;
+  let m;
+  if ((m = v.match(/^(\d+):([0-5]?\d)$/))) return +m[1] + +m[2] / 60;
+  if ((m = v.match(/^(\d+(?:\.\d+)?)\s*s(ec)?$/))) return +m[1] / 60;
+  if ((m = v.match(/^(\d+(?:\.\d+)?)\s*m?(in)?$/))) return +m[1];
+  return NaN;
 }
-function rdLookupForm(folder){
-  return `<form data-form="rdLookup" data-folder="${folder}" class="addbook stack">
-      <label>Amazon link
-        <textarea class="field" name="src" rows="2" required placeholder="Paste the link, or everything Amazon copies when you tap Share, then Copy"></textarea></label>
-      <div class="row">
-        <button class="btn solid sm" type="submit"${ui.rd.busy ? ' disabled' : ''}>${ui.rd.busy ? 'Looking up…' : 'Look up book'}</button>
-        <button class="linkbtn" type="button" data-action="rdManual" data-id="${folder}">Type it in instead</button>
-        <button class="linkbtn" type="button" data-action="rdCancel">Cancel</button>
+function fmtMin(n){
+  if (!n) return '0m';
+  const tot = Math.round(n * 60), mm = Math.floor(tot / 60), ss = tot % 60;
+  return ss ? (mm ? `${mm}m ${ss}s` : `${ss}s`) : `${mm}m`;
+}
+const minInput = n => !n ? '' : (Math.round(n * 60) % 60 ? `${Math.floor(n)}:${String(Math.round(n * 60) % 60).padStart(2, '0')}` : String(Math.round(n)));
+function runTotals(it){
+  const sets = it.sets || [];
+  const run = sets.reduce((t, s) => t + s.reps * s.run, 0), walk = sets.reduce((t, s) => t + s.reps * s.walk, 0);
+  return { run, walk, total: (it.warmup || 0) + run + walk + (it.cooldown || 0) };
+}
+const setsText = it => (it.sets || []).map(s => `${s.reps}× ${fmtMin(s.run)} run${s.walk ? ` / ${fmtMin(s.walk)} walk` : ''}`).join(' + ');
+function runSummary(it){
+  const parts = [];
+  if (it.warmup) parts.push(`${fmtMin(it.warmup)} warm-up`);
+  if (it.sets && it.sets.length) parts.push(setsText(it));
+  if (it.cooldown) parts.push(`${fmtMin(it.cooldown)} cool-down`);
+  const t = runTotals(it);
+  return parts.join(', ') + (t.total ? `. ${fmtMin(t.total)} total` : '');
+}
+function ivRow(s){
+  return `<div class="iv">
+      <input class="field" name="ivReps" inputmode="numeric" placeholder="6" value="${s ? s.reps : ''}" aria-label="How many times">
+      <span>×</span>
+      <input class="field" name="ivRun" inputmode="decimal" placeholder="3" value="${s ? minInput(s.run) : ''}" aria-label="Run minutes">
+      <span>run</span>
+      <input class="field" name="ivWalk" inputmode="decimal" placeholder="1" value="${s ? minInput(s.walk) : ''}" aria-label="Walk minutes">
+      <span>walk</span>
+      <button type="button" class="xbtn" data-action="wkIvRemove" aria-label="Remove this set">×</button>
+    </div>`;
+}
+function wkDefaultDate(wk){
+  const t = todayKey(), end = keyOf(addDays(parseKey(wk), 6));
+  return t < wk ? wk : t > end ? end : t;
+}
+function runForm(wk, it){
+  const end = keyOf(addDays(parseKey(wk), 6));
+  return `<form data-form="wkRun" data-week="${wk}" data-id="${it.id}" class="addform" style="margin:4px 0 10px">
+      <label class="lbl wide">Date
+        <input class="field" name="date" type="date" min="${wk}" max="${end}" value="${esc(it.date || wkDefaultDate(wk))}" required></label>
+      <div class="lbl wide">Warm-up walk
+        <span class="min-in"><input class="field" name="warmup" inputmode="decimal" placeholder="0" value="${esc(minInput(it.warmup))}" aria-label="Warm-up minutes"> min</span></div>
+      <div class="lbl wide">Run/walk intervals <span class="iv-head">(times × minutes running, minutes walking)</span>
+        <div class="iv-rows stack">${(it.sets && it.sets.length ? it.sets : [null]).map(ivRow).join('')}</div>
+        <div class="row"><button type="button" class="linkbtn" data-action="wkIvAdd">Add another interval set</button></div></div>
+      <div class="lbl wide">Cool-down walk
+        <span class="min-in"><input class="field" name="cooldown" inputmode="decimal" placeholder="0" value="${esc(minInput(it.cooldown))}" aria-label="Cool-down minutes"> min</span></div>
+      <p class="wk-total wide"></p>
+      <p class="note wide" style="margin:0">Times are in minutes. Use 1.5 or 1:30 for a minute and a half.</p>
+      <div class="row wide">
+        <button class="btn solid sm" type="submit">Save run</button>
+        <button class="linkbtn" type="button" data-action="wkCancel">Cancel</button>
+        ${it.done || it.extra ? `<button class="linkbtn" type="button" data-action="wkClear" data-id="${it.id}" data-week="${wk}" style="margin-left:auto">${it.extra ? 'Remove' : 'Mark not done'}</button>` : ''}
       </div>
     </form>`;
 }
-function rdDraftForm(){
-  const d = ui.rd.draft;
-  const folderOpts = rdState().folders.map(f => ({ id: f.id, label: rdPath(f.id) }))
-    .sort((a,b) => a.label.localeCompare(b.label))
-    .map(o => `<option value="${o.id}"${o.id === d.folder ? ' selected' : ''}>${esc(o.label)}</option>`).join('');
-  return `<form data-form="rdSave" class="addbook stack">
-      ${d.note ? `<p class="${d.found ? 'note' : 'err'}" style="margin:0">${esc(d.note)}</p>` : ''}
-      <label>Title<input class="field" name="title" value="${esc(d.title)}" required maxlength="200"></label>
-      <label>Author<input class="field" name="author" value="${esc(d.author)}" maxlength="200"></label>
-      <label>Link<input class="field" name="url" value="${esc(d.url)}" inputmode="url" maxlength="2000"></label>
-      ${d.id ? `<label>Category<select class="field" name="folder">${folderOpts}</select></label>` : ''}
-      <div class="row">
-        <button class="btn solid sm" type="submit">${d.id ? 'Save changes' : 'Save book'}</button>
-        <button class="linkbtn" type="button" data-action="rdCancel">Cancel</button>
-      </div>
-    </form>`;
-}
-function rdBookHtml(b){
-  if (ui.rd.draft && ui.rd.draft.id === b.id) return rdDraftForm();
-  const safeUrl = /^https?:\/\//i.test(b.url || '') ? b.url : '';
-  const title = safeUrl
-    ? `<a href="${esc(safeUrl)}" target="_blank" rel="noopener">${esc(b.title)}</a>`
-    : `<span class="tt">${esc(b.title)}</span>`;
-  return `<div class="task book">
-      <button class="box" data-action="rdDone" data-id="${b.id}" aria-label="Mark “${esc(b.title)}” as read"></button>
-      <div class="bk">${title}${b.author ? `<div class="by">${esc(b.author)}</div>` : ''}</div>
-      <button class="linkbtn" data-action="rdEdit" data-id="${b.id}" aria-label="Edit “${esc(b.title)}”">Edit</button>
-    </div>`;
-}
-function rdFolderHtml(f){
-  const open = f.open !== false;
-  const kids = rdKids(f.id);
-  const books = rdState().books.filter(b => b.folder === f.id);
-  const n = rdCount(f.id);
-  let h = `<div class="fold">
-    <div class="fold-row">
-      <button class="fold-name" data-action="rdToggle" data-id="${f.id}" aria-expanded="${open}">
-        <span class="chev sm${open ? '' : ' shut'}" aria-hidden="true"></span><span class="nm">${esc(f.name)}</span>${n ? `<span class="cnt">${n}</span>` : ''}
-      </button>
-      <button class="xbtn" data-action="rdMenu" data-id="${f.id}" aria-label="Options for ${esc(f.name)}" aria-expanded="${ui.rd.menu === f.id}">⋯</button>
-    </div>`;
-  if (ui.rd.menu === f.id) h += `<div class="row fold-menu">
-      <button class="btn sm" data-action="rdAddBook" data-id="${f.id}">Add book</button>
-      <button class="btn sm" data-action="rdNewFolder" data-id="${f.id}">Add subcategory</button>
-      <button class="linkbtn" data-action="rdRename" data-id="${f.id}">Rename</button>
-      <button class="linkbtn" data-action="rdDeleteFolder" data-id="${f.id}">Delete</button>
-    </div>`;
-  if (ui.rd.renameId === f.id) h += `<form data-form="rdRename" data-id="${f.id}" class="row" style="margin:4px 0 10px">
-      <input class="field" name="name" value="${esc(f.name)}" maxlength="60" required style="flex:1" aria-label="New name">
-      <button class="btn solid sm" type="submit">Save</button>
-      <button class="linkbtn" type="button" data-action="rdCancel">Cancel</button>
-    </form>`;
-  if (open) {
-    let body = '';
-    if (ui.rd.addIn === f.id) body += ui.rd.draft && !ui.rd.draft.id ? rdDraftForm() : rdLookupForm(f.id);
-    body += books.map(rdBookHtml).join('');
-    body += kids.map(rdFolderHtml).join('');
-    if (ui.rd.newIn === f.id) body += rdFolderForm(f.id);
-    if (!body) body = `<p class="note" style="margin:2px 0 10px">Empty. Tap ⋯ to add a book or a subcategory.</p>`;
-    h += `<div class="fold-body">${body}</div>`;
+function readRunForm(form){
+  const E = form.elements, sets = [];
+  for (const row of form.querySelectorAll('.iv')) {
+    const [r, a, b] = row.querySelectorAll('input');
+    if (!r.value.trim() && !a.value.trim() && !b.value.trim()) continue;
+    const reps = parseInt(r.value, 10), run = parseMin(a.value), walk = parseMin(b.value || '0');
+    if (!(reps >= 1 && reps <= 99)) return { err: r, msg: 'How many times, like 6' };
+    if (!(run > 0)) return { err: a, msg: 'Run minutes, like 3 or 1:30' };
+    if (!(walk >= 0)) return { err: b, msg: 'Walk minutes, like 1 or 0:30' };
+    sets.push({ reps, run, walk });
   }
-  return h + '</div>';
+  const warmup = parseMin(E['warmup'].value), cooldown = parseMin(E['cooldown'].value);
+  if (!(warmup >= 0)) return { err: E['warmup'], msg: 'Minutes, like 5' };
+  if (!(cooldown >= 0)) return { err: E['cooldown'], msg: 'Minutes, like 5' };
+  return { date: E['date'].value, warmup, cooldown, sets };
 }
-function renderReading(){
-  const el = $('#reading'), aside = $('#reading-aside');
-  const R = rdState();
-  aside.textContent = R.books.length ? `${R.books.length} book${R.books.length === 1 ? '' : 's'}` : '';
-  const roots = rdKids(null);
-  let html = '';
-  if (ui.rd.undo) html += `<p class="note" style="margin:0 0 8px">Checked off “${esc(ui.rd.undo.book.title)}”. <button class="linkbtn" data-action="rdUndo">Undo</button></p>`;
-  if (!roots.length && ui.rd.newIn !== null) html += `<p class="muted">Start with a category, like Fiction or Business. Categories can hold books and other categories.</p>`;
-  html += roots.map(rdFolderHtml).join('');
-  html += ui.rd.newIn === null ? rdFolderForm(null)
-    : `<button class="btn sm" style="margin-top:12px" data-action="rdNewFolder">New category</button>`;
+function updateRunTotal(form){
+  const out = form.querySelector('.wk-total'); if (!out) return;
+  const r = readRunForm(form);
+  if (r.err) { out.textContent = ''; return; }
+  const t = runTotals(r);
+  out.textContent = t.total ? `${fmtMin(t.total)} total: ${fmtMin(t.run)} running, ${fmtMin(t.walk + r.warmup + r.cooldown)} walking` : '';
+}
+function wkItemHtml(wk, it, isPast){
+  if (ui.wk.open === it.id) return `<div class="wk-item" style="display:block"><div class="row" style="gap:14px"><div class="box on" aria-hidden="true" style="opacity:.35"></div><span class="label">${wkLabel(it.type)}${it.extra ? ' (extra)' : ''}</span></div><div class="wk-form">${runForm(wk, it)}</div></div>`;
+  const missed = isPast && !it.done;
+  let sum = '';
+  if (it.done) sum = `${fmtDay(parseKey(it.date))}${it.type === 'run' && runSummary(it) ? `. ${runSummary(it)}` : ''}`;
+  else if (missed) sum = 'Missed';
+  const edit = it.done && it.type === 'run' ? `<button class="linkbtn" data-action="wkEdit" data-id="${it.id}" data-week="${wk}">Edit</button>` : '';
+  return `<div class="wk-item${missed ? ' missed' : ''}">
+      <button class="box${it.done ? ' on' : ''}" data-action="wkTick" data-id="${it.id}" data-week="${wk}"
+        aria-label="${it.done ? `${wkLabel(it.type)} done. Tap to undo` : `Mark ${wkLabel(it.type).toLowerCase()} done`}"></button>
+      <div class="wk-body"><span class="label">${wkLabel(it.type)}${it.extra ? ' (extra)' : ''}</span>
+        ${sum ? `<div class="wk-sum">${esc(sum)}</div>` : ''}${edit}</div>
+    </div>`;
+}
+function renderWorkouts(){
+  const el = $('#workouts'), aside = $('#workouts-aside');
+  const cur = weekOf(todayKey());
+  const before = Object.keys(wkStore().weeks).length;
+  ensureWeeksThrough(cur);
+  if (Object.keys(wkStore().weeks).length !== before) save();
+  const W = wkStore().weeks, items = W[cur];
+  const req = items.filter(i => !i.extra), done = req.filter(i => i.done).length;
+  aside.textContent = `${done} of ${req.length} done`;
+  const past = Object.keys(W).filter(k => k < cur).sort().reverse();
+  let html = `<div class="wk-head"><span>Week of ${weekRange(cur)}</span></div>
+    <div>${items.map(it => wkItemHtml(cur, it, false)).join('')}</div>
+    <div class="row" style="margin-top:10px">
+      <button class="linkbtn" data-action="wkExtra" data-week="${cur}">Add an extra run</button>
+      <button class="linkbtn" data-action="wkTogglePast">${ui.wk.showPast ? 'Hide past weeks' : `Past weeks${past.length ? ` (${past.length})` : ''}`}</button>
+    </div>`;
+  if (ui.wk.showPast) {
+    html += `<div class="wk-past">${past.map(k => {
+      const its = W[k], r = its.filter(i => !i.extra), d = r.filter(i => i.done).length, x = its.filter(i => i.extra && i.done).length;
+      const open = !!ui.wk.pastOpen[k];
+      return `<div class="fold-row"><button class="fold-name" data-action="wkPastToggle" data-week="${k}" aria-expanded="${open}">
+          <span class="chev sm${open ? '' : ' shut'}" aria-hidden="true"></span><span class="nm">${weekRange(k)}</span>
+          <span class="cnt">${d} of ${r.length}${x ? ` + ${x} extra` : ''}</span></button></div>
+        ${open ? `<div class="fold-body" style="margin-bottom:8px">${its.map(it => wkItemHtml(k, it, true)).join('')}
+          <button class="linkbtn" data-action="wkExtra" data-week="${k}">Add an extra run</button></div>` : ''}`;
+    }).join('') || '<p class="note">No past weeks yet.</p>'}
+      ${ui.wk.addPast ? `<form data-form="wkAddWeek" class="row" style="margin:10px 0">
+          <input class="field" type="date" name="date" max="${keyOf(addDays(parseKey(cur), -1))}" required aria-label="Any day in that week">
+          <button class="btn solid sm" type="submit">Add week</button>
+          <button class="linkbtn" type="button" data-action="wkCancel">Cancel</button></form>`
+        : `<div class="row" style="padding:8px 0"><button class="linkbtn" data-action="wkAddPast">Add an earlier week</button></div>`}
+    </div>`;
+  }
+  html += `<button class="btn sm" style="margin-top:12px" data-action="wkExport">Export workouts (CSV)</button>`;
   el.innerHTML = html;
+  const f = el.querySelector('form[data-form=wkRun]'); if (f) updateRunTotal(f);
 }
-function rdReset(){ Object.assign(ui.rd, { menu:null, addIn:null, newIn:undefined, renameId:null, draft:null, busy:false }); }
-
-/* Book lookup: reads the ISBN or title from what was pasted, then asks Open Library, then Google Books. */
-async function getJSON(url, ms){
-  const c = new AbortController();
-  const t = setTimeout(() => c.abort(), ms || 8000);
-  try {
-    const r = await fetch(url, { signal: c.signal });
-    if (!r.ok) throw new Error(String(r.status));
-    return await r.json();
-  } finally { clearTimeout(t); }
+function wkCsv(){
+  const W = wkStore().weeks, cur = weekOf(todayKey());
+  const rows = [['week_start','week_end','workout','status','date','warmup_min','intervals','run_min','walk_min','cooldown_min','total_min']];
+  const n = v => v ? String(Math.round(v * 100) / 100) : '0';
+  Object.keys(W).sort().forEach(k => W[k].forEach(it => {
+    const status = it.done ? 'done' : k < cur ? 'missed' : 'not yet';
+    const base = [k, keyOf(addDays(parseKey(k), 6)), wkLabel(it.type) + (it.extra ? ' (extra)' : ''), status, it.done ? it.date : ''];
+    if (it.type === 'run' && it.done) {
+      const t = runTotals(it);
+      rows.push([...base, n(it.warmup), setsText(it), n(t.run), n(t.walk), n(it.cooldown), n(t.total)]);
+    } else rows.push([...base, '', '', '', '', '', '']);
+  }));
+  return rows.map(r => r.map(c => /[",\n]/.test(c) ? `"${String(c).replace(/"/g, '""')}"` : c).join(',')).join('\n');
 }
-function parseAmazon(text){
-  const urlM = text.match(/https?:\/\/[^\s<>"]+/i);
-  const url = urlM ? urlM[0].replace(/[).,;\]]+$/, '') : '';
-  let rest = (urlM ? text.replace(urlM[0], ' ') : text).replace(/\s+/g, ' ').trim();
-  let isbn = null, slug = '', author = '';
-  const isbnInText = rest.match(/\b(97[89]\d{10}|\d{9}[\dX])\b/);
-  if (isbnInText) isbn = isbnInText[1];
-  if (url) {
-    try {
-      const u = new URL(url);
-      const m = u.pathname.match(/\/(?:dp|gp\/product|gp\/aw\/d|exec\/obidos\/ASIN|product)\/([A-Z0-9]{10})(?:[/?]|$)/i);
-      if (m && !isbn && /^\d{9}[\dX]$/i.test(m[1])) isbn = m[1].toUpperCase();
-      const sm = u.pathname.match(/^\/([^/]+)\/(?:dp|gp)\//);
-      if (sm) slug = decodeURIComponent(sm[1]).replace(/[-_]+/g, ' ').trim();
-    } catch (e) {}
-  }
-  // Amazon page titles look like "Title: Last, First: 9780000000000: Amazon.com: Books"
-  const parts = rest.split(/\s*:\s+/).map(x => x.trim()).filter(Boolean);
-  const amzIdx = parts.findIndex(x => /^amazon\.[a-z.]+$/i.test(x));
-  if (amzIdx > 0) {
-    const before = parts.slice(0, amzIdx).filter(x => !/^(97[89]\d{10}|\d{9}[\dX])$/.test(x));
-    if (before.length >= 2 && /^[^,]+,\s*[^,]+$/.test(before[before.length - 1])) {
-      const [last, first] = before.pop().split(/,\s*/);
-      author = `${first} ${last}`;
-    }
-    rest = before.join(': ');
-  }
-  rest = rest.replace(/^amazon\.[a-z.]+\s*:\s*/i, '').replace(/check out this (item|book)( on amazon)?:?/ig, '')
-             .replace(/\b(paperback|hardcover|kindle edition|audible audiobook)\b.*$/i, '').trim();
-  return { url, isbn, title: rest || slug, author };
-}
-async function lookupBook(text){
-  const p = parseAmazon(text);
-  const out = { url: p.url, title: p.title, author: p.author, found: false };
-  const tidy = q => q.split(/\s[:(\[]|\s[–—-]\s/)[0].trim();
-  const queries = [];
-  if (p.isbn) queries.push(`isbn:${p.isbn}`);
-  if (p.title) {
-    queries.push(p.title + (p.author ? ' ' + p.author : ''));
-    const short = tidy(p.title);
-    if (short && short !== p.title) queries.push(short);
-  }
-  for (const q of queries) {
-    try {
-      const j = await getJSON(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&fields=title,author_name&limit=1`);
-      const d = j.docs && j.docs[0];
-      if (d && d.title) return Object.assign(out, { title: d.title, author: (d.author_name || []).slice(0, 2).join(', ') || out.author, found: true, source: 'Open Library' });
-    } catch (e) {}
-    try {
-      const j = await getJSON(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=1&printType=books`);
-      const v = j.items && j.items[0] && j.items[0].volumeInfo;
-      if (v && v.title) return Object.assign(out, { title: v.title, author: (v.authors || []).slice(0, 2).join(', ') || out.author, found: true, source: 'Google Books' });
-    } catch (e) {}
-  }
-  return out;
+// Loads PAST_WORKOUTS once each, filling that week's open slot of the same type (or adding an extra).
+function seedWorkouts(){
+  const S = wkStore(), had = S.seeded.length;
+  PAST_WORKOUTS.forEach(p => {
+    const sig = JSON.stringify(p);
+    if (S.seeded.includes(sig) || !/^\d{4}-\d{2}-\d{2}$/.test(p.date || '')) return;
+    const items = ensureWeek(weekOf(p.date));
+    let slot = items.find(i => i.type === p.type && !i.done && !i.extra);
+    if (!slot) { slot = { id: uid(), type: p.type, extra: true }; items.push(slot); }
+    Object.assign(slot, { done: true, date: p.date });
+    if (p.type === 'run') Object.assign(slot, { warmup: p.warmup || 0, cooldown: p.cooldown || 0, sets: p.sets || [] });
+    S.seeded.push(sig);
+  });
+  if (S.seeded.length !== had) save();
 }
 
 /* ---------- Counter ---------- */
@@ -1522,7 +1562,7 @@ function renderGames(){
 /* ---------- Actions ---------- */
 function renderAll(){
   $('#today-label').textContent = new Date().toLocaleDateString([], { weekday:'long', month:'long', day:'numeric' });
-  renderWeather(); renderOutfit(); renderCalendar(); renderUpcoming(); renderTodo(); renderList('friday'); renderList('watch'); renderReading(); renderCounter(); renderSubs(); renderGames();
+  renderWeather(); renderOutfit(); renderCalendar(); renderUpcoming(); renderTodo(); renderList('friday'); renderList('watch'); renderWorkouts(); renderCounter(); renderSubs(); renderGames();
   renderedDay = todayKey();
 }
 
@@ -1539,63 +1579,6 @@ const actions = {
     save();
     const sec = document.querySelector(`.stop[data-section="${id}"]`);
     if (sec) applyCollapse(sec);
-  },
-  rdNewFolder(_, id){
-    rdReset(); ui.rd.newIn = id || null;
-    if (id) { const f = rdState().folders.find(x => x.id === id); if (f) f.open = true; }
-    renderReading();
-    const inp = $('#reading form[data-form=rdFolder] input'); if (inp) inp.focus();
-  },
-  rdToggle(_, id){
-    const f = rdState().folders.find(x => x.id === id); if (!f) return;
-    f.open = f.open === false; save(); renderReading();
-  },
-  rdMenu(_, id){ const was = ui.rd.menu === id; rdReset(); ui.rd.menu = was ? null : id; renderReading(); },
-  rdAddBook(_, id){
-    rdReset(); ui.rd.addIn = id;
-    const f = rdState().folders.find(x => x.id === id); if (f) f.open = true;
-    renderReading();
-    const ta = $('#reading textarea[name=src]'); if (ta) ta.focus();
-  },
-  rdManual(_, id){
-    ui.rd.addIn = id; ui.rd.draft = { folder: id, title: '', author: '', url: '', note: '', found: false };
-    renderReading(); const t = $('#reading input[name=title]'); if (t) t.focus();
-  },
-  rdRename(_, id){ rdReset(); ui.rd.renameId = id; renderReading(); const i = $('#reading form[data-form=rdRename] input'); if (i) { i.focus(); i.select(); } },
-  rdDeleteFolder(_, id){
-    const R = rdState(), f = R.folders.find(x => x.id === id); if (!f) return;
-    const ids = new Set(rdDescendants(id));
-    const books = R.books.filter(b => ids.has(b.folder)).length, subs = ids.size - 1;
-    const extra = [books ? `${books} book${books === 1 ? '' : 's'}` : '', subs ? `${subs} subcategor${subs === 1 ? 'y' : 'ies'}` : ''].filter(Boolean).join(' and ');
-    if (!confirm(`Delete “${f.name}”${extra ? ` and the ${extra} inside it` : ''}?`)) return;
-    R.folders = R.folders.filter(x => !ids.has(x.id));
-    R.books = R.books.filter(b => !ids.has(b.folder));
-    rdReset(); save(); renderReading();
-  },
-  rdEdit(_, id){
-    const b = rdState().books.find(x => x.id === id); if (!b) return;
-    rdReset(); ui.rd.draft = { id: b.id, folder: b.folder, title: b.title, author: b.author || '', url: b.url || '', note: '', found: true };
-    renderReading();
-  },
-  rdCancel(){ rdReset(); renderReading(); },
-  rdDone(btn, id){
-    const R = rdState(), row = btn.closest('.task');
-    const commit = () => {
-      const idx = R.books.findIndex(x => x.id === id); if (idx < 0) return;
-      const [book] = R.books.splice(idx, 1);
-      if (ui.rd.undo) clearTimeout(ui.rd.undo.timer);
-      ui.rd.undo = { book, index: idx, timer: setTimeout(() => { ui.rd.undo = null; renderReading(); }, 8000) };
-      save(); renderReading();
-    };
-    if (reduceMotion()) return commit();
-    row.classList.add('gone'); setTimeout(commit, 320);
-  },
-  rdUndo(){
-    const u = ui.rd.undo; if (!u) return;
-    clearTimeout(u.timer);
-    const R = rdState();
-    if (R.folders.some(f => f.id === u.book.folder)) R.books.splice(Math.min(u.index, R.books.length), 0, u.book);
-    ui.rd.undo = null; save(); renderReading();
   },
   tdToggle(_, id){
     const f = tdFolders().find(x => x.id === id); if (!f) return;
@@ -1629,6 +1612,47 @@ const actions = {
     tdReset(); save(); renderTodoTree();
   },
   tdCancel(){ tdReset(); renderTodoTree(); },
+  wkTick(btn, id){
+    const wk = btn.dataset.week, it = (wkStore().weeks[wk] || []).find(x => x.id === id); if (!it) return;
+    if (it.done) {
+      if (!confirm(`Mark this ${wkLabel(it.type).toLowerCase()} workout as not done?`)) return;
+      it.done = false; delete it.date; delete it.sets; delete it.warmup; delete it.cooldown;
+      save(); renderWorkouts(); return;
+    }
+    if (it.type === 'strength') { it.done = true; it.date = wkDefaultDate(wk); save(); renderWorkouts(); return; }
+    ui.wk.open = id; renderWorkouts();
+    const f = $('#workouts form[data-form=wkRun]'); if (f) f.querySelector('[name=ivReps]').focus();
+  },
+  wkEdit(btn, id){ ui.wk.open = id; renderWorkouts(); },
+  wkCancel(){
+    const W = wkStore().weeks;
+    // An extra run that was never saved shouldn't linger
+    Object.keys(W).forEach(k => { W[k] = W[k].filter(i => !(i.extra && !i.done && i.id === ui.wk.open)); });
+    ui.wk.open = null; ui.wk.addPast = false; renderWorkouts();
+  },
+  wkClear(btn, id){
+    const wk = btn.dataset.week, items = wkStore().weeks[wk] || [], it = items.find(x => x.id === id); if (!it) return;
+    if (it.extra) { if (!confirm('Remove this extra run?')) return; wkStore().weeks[wk] = items.filter(x => x.id !== id); }
+    else { it.done = false; delete it.date; delete it.sets; delete it.warmup; delete it.cooldown; }
+    ui.wk.open = null; save(); renderWorkouts();
+  },
+  wkExtra(btn){
+    const wk = btn.dataset.week, it = { id: uid(), type: 'run', extra: true, done: false };
+    ensureWeek(wk).push(it); ui.wk.open = it.id; renderWorkouts();
+  },
+  wkIvAdd(btn){
+    const form = btn.closest('form'), rows = form.querySelector('.iv-rows');
+    rows.insertAdjacentHTML('beforeend', ivRow(null)); rows.lastElementChild.querySelector('input').focus(); updateRunTotal(form);
+  },
+  wkIvRemove(btn){
+    const form = btn.closest('form'), row = btn.closest('.iv');
+    if (form.querySelectorAll('.iv').length > 1) row.remove(); else row.querySelectorAll('input').forEach(i => { i.value = ''; });
+    updateRunTotal(form);
+  },
+  wkTogglePast(){ ui.wk.showPast = !ui.wk.showPast; renderWorkouts(); },
+  wkPastToggle(btn){ const k = btn.dataset.week; ui.wk.pastOpen[k] = !ui.wk.pastOpen[k]; renderWorkouts(); },
+  wkAddPast(){ ui.wk.addPast = true; renderWorkouts(); const i = $('#workouts form[data-form=wkAddWeek] input'); if (i) i.focus(); },
+  wkExport(){ download(`meatloaf-workouts-${todayKey()}.csv`, wkCsv(), 'text/csv'); },
   ctrShowAdd(){ ui.ctr = { adding:true, edit:null }; renderCounter(); const i = $('#counter input[name=title]'); if (i) i.focus(); },
   ctrEdit(_, id){ ui.ctr = { adding:false, edit:id }; renderCounter(); },
   ctrCancel(){ ui.ctr = { adding:false, edit:null }; renderCounter(); },
@@ -1761,44 +1785,6 @@ const forms = {
     state.zip = zip; ui.editZip = false; weatherError = null; save();
     renderWeather(); renderOutfit(); loadWeather(true);
   },
-  rdFolder(form){
-    const name = form.elements['name'].value.trim(); if (!name) return;
-    const parent = form.dataset.parent || null;
-    rdState().folders.push({ id: uid(), name, parent, open: true });
-    rdReset(); save(); renderReading();
-  },
-  rdRename(form){
-    const f = rdState().folders.find(x => x.id === form.dataset.id), name = form.elements['name'].value.trim();
-    if (f && name) f.name = name;
-    rdReset(); save(); renderReading();
-  },
-  async rdLookup(form){
-    const src = form.elements['src'].value.trim(); if (!src || ui.rd.busy) return;
-    const folder = form.dataset.folder;
-    ui.rd.busy = true; renderReading();
-    let r;
-    try { r = await lookupBook(src); } catch (e) { r = { url: '', title: '', author: '', found: false }; }
-    ui.rd.busy = false;
-    ui.rd.draft = { folder, title: r.title || '', author: r.author || '', url: r.url || '', found: r.found,
-      note: r.found ? `Found on ${r.source}. Check it's right, then save.`
-        : r.title ? "Couldn't confirm this book online. Check the title, add the author, then save."
-        : "This link doesn't include the book's details. Type the title and author." };
-    renderReading();
-    const t = $('#reading input[name=title]'); if (t && !r.title) t.focus();
-  },
-  rdSave(form){
-    const d = ui.rd.draft; if (!d) return;
-    const title = form.elements['title'].value.trim(); if (!title) return;
-    const author = form.elements['author'].value.trim(), url = form.elements['url'].value.trim();
-    const R = rdState();
-    if (d.id) {
-      const b = R.books.find(x => x.id === d.id);
-      if (b) Object.assign(b, { title, author, url, folder: form.elements['folder'] ? form.elements['folder'].value : b.folder });
-    } else {
-      R.books.push({ id: uid(), title, author, url, folder: d.folder, added: todayKey() });
-    }
-    rdReset(); save(); renderReading();
-  },
   tdFolder(form){
     const name = form.elements['name'].value.trim(); if (!name) return;
     tdFolders().push({ id: uid(), name, parent: form.dataset.parent || null, open: true });
@@ -1808,6 +1794,21 @@ const forms = {
     const f = tdFolders().find(x => x.id === form.dataset.id), name = form.elements['name'].value.trim();
     if (f && name) f.name = name;
     tdReset(); save(); renderTodoTree();
+  },
+  wkRun(form){
+    const wk = form.dataset.week, it = (wkStore().weeks[wk] || []).find(x => x.id === form.dataset.id); if (!it) return;
+    const r = readRunForm(form);
+    if (r.err) { r.err.setCustomValidity(r.msg); r.err.reportValidity(); return; }
+    if (!r.sets.length) { const i = form.querySelector('[name=ivReps]'); i.setCustomValidity('Add at least one run/walk set'); i.reportValidity(); return; }
+    const end = keyOf(addDays(parseKey(wk), 6));
+    if (!(r.date >= wk && r.date <= end)) { form.elements['date'].setCustomValidity(`Pick a day from ${weekRange(wk)}`); form.elements['date'].reportValidity(); return; }
+    Object.assign(it, { done: true, date: r.date, warmup: r.warmup, cooldown: r.cooldown, sets: r.sets });
+    ui.wk.open = null; save(); renderWorkouts();
+  },
+  wkAddWeek(form){
+    const d = form.elements['date'].value; if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+    const wk = weekOf(d); ensureWeeksThrough(wk); ensureWeeksThrough(weekOf(todayKey()));
+    ui.wk.addPast = false; ui.wk.pastOpen[wk] = true; save(); renderWorkouts();
   },
   ctrSave(form){
     const title = form.elements['title'].value.trim(), since = form.elements['since'].value;
@@ -1910,6 +1911,8 @@ document.addEventListener('input', e => {
   if (e.target.setCustomValidity) e.target.setCustomValidity('');
   const f = e.target.closest && e.target.closest('[data-form=subSave]');
   if (f && (e.target.name === 'price' || e.target.name === 'rbAmt')) updateNet(f);
+  const rf = e.target.closest && e.target.closest('[data-form=wkRun]');
+  if (rf) updateRunTotal(rf);
 });
 
 $('#import-file').addEventListener('change', async e => {
@@ -1934,6 +1937,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('hashchange', () => { if (location.hash.startsWith('#cal=')) { importFromHash(); renderCalendar(); } });
 
 /* ---------- Start ---------- */
+seedWorkouts();
 importFromHash();
 setupCollapse();
 renderAll();
