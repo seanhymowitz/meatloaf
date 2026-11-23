@@ -103,6 +103,9 @@ main{max-width:600px;margin:0 auto;padding:4px 16px 48px}
 .addform label.lbl{font-size:13px;color:var(--muted);display:grid;gap:4px}
 .addform [hidden]{display:none}
 /* Workouts */
+.wk-plan{background:var(--surface);border-radius:12px;padding:12px 14px;margin:0 0 10px}
+.wk-plan b{display:block;font-size:17px;font-weight:700;margin-bottom:2px}
+.wk-plan p{margin:0;font-size:14px;color:var(--muted)}
 .wk-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:0 0 4px;font-size:14px;color:var(--muted)}
 .wk-item{display:flex;gap:14px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--rule)}
 .wk-item:first-child{border-top:0}
@@ -1067,8 +1070,41 @@ const PAST_WORKOUTS = [
   { date:'2026-11-19', type:'strength' },
   { date:'2026-11-21', type:'run', warmup:5, sets:[{ reps:6, run:2, walk:1 }], cooldown:5 },
 ];
-const WK_TEMPLATE = ['run', 'run', 'run', 'strength'];
-const wkLabel = t => t === 'run' ? 'Running' : 'Strength';
+/* Return-to-running plan. Week 1 began Mon Nov 9; the plan week moves up automatically each Monday. */
+const PLAN_START = '2026-11-09';
+const CALF_FROM = '2026-11-23';   // calf & shin raises are tracked from this week on
+const PLAN_WEEKS = [
+  null,
+  { sets:[{ reps:7, run:1, walk:2 }] },
+  { sets:[{ reps:6, run:2, walk:1.5 }] },
+  { sets:[{ reps:5, run:3, walk:1.5 }] },
+  { sets:[{ reps:4, run:4, walk:1 }] },
+  { sets:[{ reps:4, run:5, walk:1 }] },
+  { sets:[{ reps:3, run:7, walk:1 }] },
+  { sets:[{ reps:3, run:8, walk:1 }] },
+  { sets:[{ reps:2, run:10, walk:1 }, { reps:1, run:5, walk:0 }], text:'10 run / 1 walk / 10 run / 1 walk / 5 run' },
+];
+const PLAN_AFTER = { sets:[{ reps:1, run:12, walk:1 }, { reps:1, run:12, walk:0 }], text:'12 run / 1 walk / 12 run' };
+const PLAN_WARMUP = 5, PLAN_COOLDOWN = 3;
+function planWeekNum(wk){
+  const n = Math.floor(Math.round((parseKey(wk) - parseKey(PLAN_START)) / 864e5) / 7) + 1;
+  return n >= 1 ? n : null;
+}
+function planFor(wk){
+  const n = planWeekNum(wk);
+  if (!n) return null;
+  const p = n <= 8 ? PLAN_WEEKS[n] : PLAN_AFTER;
+  const runMin = p.sets.reduce((t, x) => t + x.reps * x.run, 0);
+  return { n, after: n > 8, sets: p.sets, text: p.text || setsText({ sets: p.sets }), runMin, pogo: n >= 3 };
+}
+const CALF_TEXT = '2 × 15 bent-knee calf raises, 2 × 15 tibialis raises';
+function weekTemplate(wk){
+  const t = ['run', 'run', 'run', 'strength'];
+  if (wk >= CALF_FROM) t.push('calf', 'calf');
+  return t;
+}
+const wkLabel = t => t === 'run' ? 'Running' : t === 'calf' ? 'Calf & shin raises' : 'Strength';
+const isWorkout = i => i.type !== 'calf' && !i.extra;
 function wkStore(){
   if (!state.workouts || typeof state.workouts !== 'object') state.workouts = {};
   if (!state.workouts.weeks) state.workouts.weeks = {};
@@ -1082,7 +1118,7 @@ function weekRange(wk){
 }
 function ensureWeek(wk){
   const W = wkStore().weeks;
-  if (!W[wk]) W[wk] = WK_TEMPLATE.map(type => ({ id: uid(), type, done: false }));
+  if (!W[wk]) W[wk] = weekTemplate(wk).map(type => ({ id: uid(), type, done: false }));
   return W[wk];
 }
 // Every week from the first one tracked through this week gets a checklist, so skipped weeks show as missed.
@@ -1136,7 +1172,8 @@ function wkDefaultDate(wk){
   return t < wk ? wk : t > end ? end : t;
 }
 function runForm(wk, it){
-  const end = keyOf(addDays(parseKey(wk), 6));
+  const end = keyOf(addDays(parseKey(wk), 6)), plan = planFor(wk);
+  if (!it.done && plan) it = Object.assign({}, it, { warmup: PLAN_WARMUP, cooldown: PLAN_COOLDOWN, sets: plan.sets.map(x => Object.assign({}, x)) });
   return `<form data-form="wkRun" data-week="${wk}" data-id="${it.id}" class="addform" style="margin:4px 0 10px">
       <label class="lbl wide">Date
         <input class="field" name="date" type="date" min="${wk}" max="${end}" value="${esc(it.date || wkDefaultDate(wk))}" required></label>
@@ -1148,7 +1185,7 @@ function runForm(wk, it){
       <div class="lbl wide">Cool-down walk
         <span class="min-in"><input class="field" name="cooldown" inputmode="decimal" placeholder="0" value="${esc(minInput(it.cooldown))}" aria-label="Cool-down minutes"> min</span></div>
       <p class="wk-total wide"></p>
-      <p class="note wide" style="margin:0">Times are in minutes. Use 1.5 or 1:30 for a minute and a half.</p>
+      <p class="note wide" style="margin:0">${plan ? `Filled in from week ${plan.n} of your plan. Change anything you did differently. ` : ''}Times are in minutes. Use 1.5 or 1:30 for a minute and a half.${plan && plan.pogo ? ' Pogo hops (2 × 15s) go after the warm-up walk.' : ''}</p>
       <div class="row wide">
         <button class="btn solid sm" type="submit">Save run</button>
         <button class="linkbtn" type="button" data-action="wkCancel">Cancel</button>
@@ -1183,8 +1220,11 @@ function wkItemHtml(wk, it, isPast){
   if (ui.wk.open === it.id) return `<div class="wk-item" style="display:block"><div class="row" style="gap:14px"><div class="box on" aria-hidden="true" style="opacity:.35"></div><span class="label">${wkLabel(it.type)}${it.extra ? ' (extra)' : ''}</span></div><div class="wk-form">${runForm(wk, it)}</div></div>`;
   const missed = isPast && !it.done;
   let sum = '';
+  const plan = planFor(wk);
   if (it.done) sum = `${fmtDay(parseKey(it.date))}${it.type === 'run' && runSummary(it) ? `. ${runSummary(it)}` : ''}`;
   else if (missed) sum = 'Missed';
+  else if (it.type === 'run' && plan) sum = `Planned: ${plan.text}`;
+  else if (it.type === 'calf') sum = `${CALF_TEXT}. After your Monday and Saturday runs`;
   const edit = it.done && it.type === 'run' ? `<button class="linkbtn" data-action="wkEdit" data-id="${it.id}" data-week="${wk}">Edit</button>` : '';
   return `<div class="wk-item${missed ? ' missed' : ''}">
       <button class="box${it.done ? ' on' : ''}" data-action="wkTick" data-id="${it.id}" data-week="${wk}"
@@ -1200,10 +1240,15 @@ function renderWorkouts(){
   ensureWeeksThrough(cur);
   if (Object.keys(wkStore().weeks).length !== before) save();
   const W = wkStore().weeks, items = W[cur];
-  const req = items.filter(i => !i.extra), done = req.filter(i => i.done).length;
+  const req = items.filter(isWorkout), done = req.filter(i => i.done).length;
   aside.textContent = `${done} of ${req.length} done`;
+  const plan = planFor(cur);
   const past = Object.keys(W).filter(k => k < cur).sort().reverse();
-  let html = `<div class="wk-head"><span>Week of ${weekRange(cur)}</span></div>
+  let html = `${plan ? `<div class="wk-plan">
+      <b>${plan.after ? 'Plan complete' : `Week ${plan.n} of 8`}: ${esc(plan.text)}</b>
+      <p>${plan.after ? 'Then drop the walk breaks as they stop feeling necessary. ' : `${plan.runMin} min running. `}${PLAN_WARMUP} min brisk-walk warm-up${plan.pogo ? ', then pogo hops (2 × 15s)' : ''}. 2–3 min easy walk to cool down.
+      Keep it conversational, in Zone 2. Stop for the day if pain changes how you run.</p></div>` : ''}
+    <div class="wk-head"><span>Week of ${weekRange(cur)}</span></div>
     <div>${items.map(it => wkItemHtml(cur, it, false)).join('')}</div>
     <div class="row" style="margin-top:10px">
       <button class="linkbtn" data-action="wkExtra" data-week="${cur}">Add an extra run</button>
@@ -1211,10 +1256,11 @@ function renderWorkouts(){
     </div>`;
   if (ui.wk.showPast) {
     html += `<div class="wk-past">${past.map(k => {
-      const its = W[k], r = its.filter(i => !i.extra), d = r.filter(i => i.done).length, x = its.filter(i => i.extra && i.done).length;
+      const its = W[k], r = its.filter(isWorkout), d = r.filter(i => i.done).length, x = its.filter(i => i.extra && i.done).length;
+      const pw = planWeekNum(k);
       const open = !!ui.wk.pastOpen[k];
       return `<div class="fold-row"><button class="fold-name" data-action="wkPastToggle" data-week="${k}" aria-expanded="${open}">
-          <span class="chev sm${open ? '' : ' shut'}" aria-hidden="true"></span><span class="nm">${weekRange(k)}</span>
+          <span class="chev sm${open ? '' : ' shut'}" aria-hidden="true"></span><span class="nm">${weekRange(k)}${pw ? ` <span class="cnt">· wk ${pw}</span>` : ''}</span>
           <span class="cnt">${d} of ${r.length}${x ? ` + ${x} extra` : ''}</span></button></div>
         ${open ? `<div class="fold-body" style="margin-bottom:8px">${its.map(it => wkItemHtml(k, it, true)).join('')}
           <button class="linkbtn" data-action="wkExtra" data-week="${k}">Add an extra run</button></div>` : ''}`;
@@ -1232,11 +1278,12 @@ function renderWorkouts(){
 }
 function wkCsv(){
   const W = wkStore().weeks, cur = weekOf(todayKey());
-  const rows = [['week_start','week_end','workout','status','date','warmup_min','intervals','run_min','walk_min','cooldown_min','total_min']];
+  const rows = [['week_start','week_end','plan_week','workout','status','date','planned','warmup_min','intervals','run_min','walk_min','cooldown_min','total_min']];
   const n = v => v ? String(Math.round(v * 100) / 100) : '0';
   Object.keys(W).sort().forEach(k => W[k].forEach(it => {
-    const status = it.done ? 'done' : k < cur ? 'missed' : 'not yet';
-    const base = [k, keyOf(addDays(parseKey(k), 6)), wkLabel(it.type) + (it.extra ? ' (extra)' : ''), status, it.done ? it.date : ''];
+    const status = it.done ? 'done' : k < cur ? 'missed' : 'not yet', plan = planFor(k);
+    const base = [k, keyOf(addDays(parseKey(k), 6)), plan ? String(plan.n) : '', wkLabel(it.type) + (it.extra ? ' (extra)' : ''), status, it.done ? it.date : '',
+      it.type === 'run' && plan ? plan.text : it.type === 'calf' ? CALF_TEXT : ''];
     if (it.type === 'run' && it.done) {
       const t = runTotals(it);
       rows.push([...base, n(it.warmup), setsText(it), n(t.run), n(t.walk), n(it.cooldown), n(t.total)]);
@@ -1615,11 +1662,11 @@ const actions = {
   wkTick(btn, id){
     const wk = btn.dataset.week, it = (wkStore().weeks[wk] || []).find(x => x.id === id); if (!it) return;
     if (it.done) {
-      if (!confirm(`Mark this ${wkLabel(it.type).toLowerCase()} workout as not done?`)) return;
+      if (!confirm(`Mark “${wkLabel(it.type)}” as not done?`)) return;
       it.done = false; delete it.date; delete it.sets; delete it.warmup; delete it.cooldown;
       save(); renderWorkouts(); return;
     }
-    if (it.type === 'strength') { it.done = true; it.date = wkDefaultDate(wk); save(); renderWorkouts(); return; }
+    if (it.type !== 'run') { it.done = true; it.date = wkDefaultDate(wk); save(); renderWorkouts(); return; }
     ui.wk.open = id; renderWorkouts();
     const f = $('#workouts form[data-form=wkRun]'); if (f) f.querySelector('[name=ivReps]').focus();
   },
